@@ -1,8 +1,4 @@
 {
-  "framework": "hugo",
-  "build": {
-    "command": "hugo --gc --minify"
-  },
   "env": {
     "HUGO_VERSION": "0.123.0"
   }
