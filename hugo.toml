@@ -1,7 +1,7 @@
 [module]
   [module.hugoVersion]
     min = "0.123.0"
-baseURL = 'https://minipiggy.top/'
+baseURL = 'https://www.minipiggy.top/'
 theme = 'PaperMod'
 title = '宝贝的时间胶囊'
 languageCode = 'zh-cn'
