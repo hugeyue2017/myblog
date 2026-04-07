@@ -1,0 +1,4 @@
+baseURL = 'https://minipiggy.top/'
+theme = 'PaperMod'
+title = '宝贝的时间胶囊'
+languageCode = 'zh-cn'
