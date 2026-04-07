@@ -1,6 +1,12 @@
-[module]
-  [module.hugoVersion]
-    min = "0.123.0"
+{
+  "framework": "hugo",
+  "build": {
+    "command": "hugo --gc --minify"
+  },
+  "env": {
+    "HUGO_VERSION": "0.123.0"
+  }
+}
     baseURL = 'https://minipiggy.top/'
 theme = 'PaperMod'
 title = '宝贝的时间胶囊'
