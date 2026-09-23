@@ -1,0 +1,5 @@
+{{- /* PaperMod 的 opengraph.html 用 `_funcs/get-page-images` 这个短名调用，
+       而 twitter_cards.html 用 `templates/_funcs/get-page-images`。
+       两者解析到不同的文件，所以这里转发到同一份实现，避免 og:image
+       和 twitter:image 拿到不一样的图。 */ -}}
+{{- return (partial "templates/_funcs/get-page-images" .) -}}

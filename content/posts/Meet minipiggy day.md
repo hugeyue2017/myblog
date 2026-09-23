@@ -1,5 +1,6 @@
 ---
 title: "小猪咪的生日"
+images: ["images/birth.jpg"]
 date: 2026-08-29
 draft: false
 ---
@@ -12,4 +13,4 @@ draft: false
 
 小猪咪，感谢你选择了胖虎和猪哥成为你的父母。愿你在这个世界里健康、自由、快乐地长大，去探索属于你的精彩天地。
 
-![小猪咪的生日](/images/IMG20260829164005.jpg)
+![小猪咪的生日](images/birth.jpg)

@@ -1,0 +1,694 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   暖调编辑风 Warm Editorial
+   ───────────────────────────────────────────────────────────────────────────
+   这一层完全覆盖在 PaperMod 之上，不改主题任何文件，靠 head.html 里的
+   `resources.Match "css/extended/*.css"` 自动追加到样式bundle 末尾取胜。
+
+   设计规则（只有一条强调色，其余全是中性灰阶）：
+     · 强调色 陶土红 #b4552d，全站唯一有色相的颜色
+     · 底色   米白 #faf7f2（不用纯白）／ 深色 #161412（暖调，不用纯黑）
+     · 标题与落款用衬线，正文用黑体
+     · 正文行高 1.9，字距 +0.012em
+     · 中文加粗不用 font-weight:700，改用底色微亮（避免糊成一团）
+     · 留白约为 PaperMod 默认的两倍
+     · 动效只有两种：滚动淡入(位移 18px) + 顶部阅读进度条
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 设计令牌 ────────────────────────────────────────────────────────── */
+
+:root {
+    /* 覆盖 PaperMod 的变量：留白翻倍 */
+    --gap: 46px;
+    --content-gap: 42px;
+    --nav-width: 1080px;
+    --main-width: 720px;
+    --header-height: 72px;
+    --footer-height: 88px;
+    --radius: 2px;
+
+    /* 中性色阶（暖灰，不带蓝） */
+    --theme: #faf7f2;
+    --entry: #fffdf9;
+    --primary: #1b1a18;
+    --secondary: #6f6a62;
+    --tertiary: #e7e1d6;
+    --content: #2b2823;
+    --code-block-bg: #211d19;
+    --code-bg: #f3efe7;
+    --border: #e9e3d8;
+
+    /* 唯一的强调色 */
+    --clay: #b4552d;
+    --clay-wash: rgba(180, 85, 45, 0.085);
+    --clay-ring: rgba(180, 85, 45, 0.18);
+    --rule: #e0d9cd;
+
+    --serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC", "SimSun",
+        "STSong", Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC",
+        "Noto Sans SC", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+:root[data-theme="dark"] {
+    --theme: #161412;
+    --entry: #1d1a17;
+    --primary: #f2ede6;
+    --secondary: #a29a90;
+    --tertiary: #322c26;
+    --content: #ddd6cb;
+    --code-block-bg: #12100e;
+    --code-bg: #211d1a;
+    --border: #2c2721;
+
+    /* 深色底上 #b4552d 对比度只有 3.6:1，同色相提亮到 6.5:1 */
+    --clay: #d9855e;
+    --clay-wash: rgba(217, 133, 94, 0.13);
+    --clay-ring: rgba(217, 133, 94, 0.22);
+    --rule: #302a24;
+}
+
+/* ── 2. 基础排版 ────────────────────────────────────────────────────────── */
+
+body {
+    font-family: var(--sans);
+    font-size: 17.5px;
+    line-height: 1.9;
+    letter-spacing: 0.012em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* 首页/列表页的 body 带 .list，PaperMod 给它上了 --code-bg，这里拉回米白 */
+.list,
+[data-theme="dark"] .list {
+    background: var(--theme);
+}
+
+.main {
+    padding: var(--gap) calc(var(--gap) * 0.62);
+}
+
+h1, h2, h3, h4, h5, h6,
+.post-title,
+.page-header h1,
+.entry-header h1,
+.entry-header h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+/* 正文里的中文加粗：不用 700，改用底色微亮，避免笔画糊在一起 */
+.post-content strong,
+.post-content b {
+    font-weight: 500;
+    background: var(--clay-wash);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding: 0.05em 0.22em;
+    border-radius: 2px;
+}
+
+.post-content a,
+.post-meta a,
+.post-description a {
+    color: var(--clay);
+    box-shadow: none;
+    border-bottom: 1px solid var(--clay-ring);
+    transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+.post-content a:hover {
+    border-bottom-color: var(--clay);
+}
+
+/* 落款：衬线、右对齐、哑光 */
+.post-content .sig {
+    font-family: var(--serif);
+    font-size: 1.02em;
+    line-height: 1.9;
+    text-align: right;
+    color: var(--primary);
+    margin-top: calc(var(--content-gap) * 1.1);
+    margin-bottom: 0.4em;
+}
+
+.post-content .sig-date {
+    font-family: var(--serif);
+    font-size: 0.94em;
+    text-align: right;
+    color: var(--secondary);
+    letter-spacing: 0.08em;
+    margin-bottom: calc(var(--content-gap) * 1.2);
+}
+
+/* ── 3. 页头 / 导航 / 页脚 ──────────────────────────────────────────────── */
+
+.header {
+    background: color-mix(in srgb, var(--theme) 88%, transparent);
+    backdrop-filter: saturate(150%) blur(10px);
+    border-bottom: 1px solid var(--rule);
+}
+
+.nav {
+    max-width: calc(var(--nav-width) + var(--gap) * 2);
+    padding: 0 calc(var(--gap) * 0.62);
+}
+
+.logo a {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+}
+
+#menu {
+    gap: 6px;
+}
+
+#menu a {
+    padding: 0 12px;
+}
+
+#menu a span {
+    font-size: 14.5px;
+    letter-spacing: 0.06em;
+    color: var(--secondary);
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+#menu a:hover span,
+#menu a span.active {
+    color: var(--clay);
+    border-bottom-color: var(--clay-ring);
+}
+
+/* 主题切换按钮：hover 也走同一个强调色 */
+#theme-toggle:hover,
+#theme-toggle:focus-visible {
+    color: var(--clay);
+}
+
+.footer {
+    border-top: 1px solid var(--rule);
+    color: var(--secondary);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+}
+
+/* 回到顶部 */
+.top-link {
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+    background: var(--entry);
+    color: var(--secondary);
+    transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.top-link:hover {
+    color: var(--clay);
+    border-color: var(--clay-ring);
+}
+
+/* ── 4. 首页 Hero ───────────────────────────────────────────────────────── */
+
+.hero {
+    padding: clamp(56px, 11vh, 128px) 0 clamp(40px, 6vh, 68px);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: clamp(40px, 6vh, 72px);
+}
+
+.hero-kicker {
+    font-size: 11px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: 22px;
+}
+
+.hero-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(2.6rem, 8vw, 5.2rem);
+    line-height: 1.16;
+    letter-spacing: 0.01em;
+    color: var(--primary);
+    margin: 0 0 26px;
+}
+
+.hero-lead {
+    font-size: 17px;
+    line-height: 1.95;
+    color: var(--secondary);
+    max-width: 34em;
+    margin: 0;
+}
+
+/* ── 5. 首页纵向时间轴 ──────────────────────────────────────────────────── */
+
+.timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+/* 那根贯穿的竖线 */
+.timeline::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 108px;
+    width: 1px;
+    background: var(--rule);
+}
+
+.tl-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 108px 1fr;
+    gap: 0 40px;
+    padding: 0 0 clamp(48px, 7vh, 76px) 0;
+}
+
+.tl-item:last-child {
+    padding-bottom: 0;
+}
+
+.tl-when {
+    text-align: right;
+    padding-top: 3px;
+}
+
+.tl-year {
+    display: block;
+    font-family: var(--serif);
+    font-size: 19px;
+    color: var(--primary);
+    letter-spacing: 0.04em;
+}
+
+.tl-md {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--secondary);
+    margin-top: 5px;
+}
+
+/* 节点圆点：hover 时变强调色并带光圈 */
+.tl-node {
+    position: absolute;
+    left: 104px;
+    top: 9px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--theme);
+    border: 1px solid var(--rule);
+    box-shadow: 0 0 0 0 var(--clay-ring);
+    transition: background-color 0.35s var(--ease), border-color 0.35s var(--ease),
+        box-shadow 0.45s var(--ease);
+}
+
+.tl-item:hover .tl-node {
+    background: var(--clay);
+    border-color: var(--clay);
+    box-shadow: 0 0 0 6px var(--clay-ring);
+}
+
+.tl-body {
+    min-width: 0;
+}
+
+.tl-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(1.45rem, 2.6vw, 1.9rem);
+    line-height: 1.45;
+    margin: 0 0 12px;
+}
+
+.tl-title a {
+    color: var(--primary);
+    transition: color 0.28s var(--ease);
+}
+
+.tl-item:hover .tl-title a {
+    color: var(--clay);
+}
+
+.tl-sum {
+    color: var(--secondary);
+    font-size: 15.5px;
+    line-height: 1.95;
+    margin: 0;
+    max-width: 36em;
+}
+
+.tl-thumb {
+    display: block;
+    margin-top: 22px;
+    max-width: 420px;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: var(--code-bg);
+}
+
+.tl-thumb img {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    object-position: center 42%;
+    transition: transform 1.1s var(--ease), filter 0.6s var(--ease);
+    filter: saturate(0.97);
+}
+
+.tl-thumb--portrait img {
+    object-position: center 30%;
+}
+
+.tl-item:hover .tl-thumb img {
+    transform: scale(1.025);
+    filter: saturate(1);
+}
+
+/* ── 6. 文章页 ──────────────────────────────────────────────────────────── */
+
+.post-header {
+    margin: clamp(36px, 6vh, 72px) auto var(--content-gap);
+}
+
+.post-title {
+    font-size: clamp(1.9rem, 4.4vw, 2.9rem);
+    line-height: 1.32;
+    letter-spacing: 0.005em;
+}
+
+.post-meta {
+    margin-top: 18px;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--secondary);
+}
+
+.post-content {
+    margin: clamp(32px, 5vh, 52px) 0;
+    font-size: 17.5px;
+    line-height: 1.9;
+}
+
+.post-content p {
+    margin-bottom: var(--content-gap);
+}
+
+.post-content h2,
+.post-content h3 {
+    margin: calc(var(--content-gap) * 1.25) 0 calc(var(--content-gap) * 0.5);
+}
+
+.post-content h2 {
+    font-size: clamp(1.4rem, 2.8vw, 1.75rem);
+}
+
+.post-content h3 {
+    font-size: clamp(1.18rem, 2.2vw, 1.35rem);
+}
+
+.post-content blockquote {
+    margin: var(--content-gap) 0;
+    padding: 2px 0 2px 22px;
+    border-inline-start: 2px solid var(--clay-ring);
+    color: var(--secondary);
+    font-family: var(--serif);
+}
+
+.post-content hr {
+    height: 1px;
+    background: var(--rule);
+    margin: calc(var(--content-gap) * 1.3) 0;
+}
+
+/* 图片：编辑风的克制圆角 + 上下大留白 */
+.post-content img,
+.post-content .post-img {
+    border-radius: var(--radius);
+    margin: calc(var(--content-gap) * 1.05) 0;
+    width: 100%;
+    height: auto;
+}
+
+/* 标签 / 上下篇 */
+.post-tags a,
+.paginav {
+    border-radius: var(--radius);
+    background: transparent;
+    border: 1px solid var(--rule);
+}
+
+.post-tags a {
+    color: var(--secondary);
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    line-height: 32px;
+    transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.post-tags a:hover,
+.paginav a:hover {
+    background: transparent;
+    color: var(--clay);
+    border-color: var(--clay-ring);
+}
+
+.paginav .title {
+    color: var(--secondary);
+    letter-spacing: 0.16em;
+}
+
+/* ── 7. 列表 / 归档 / 标签页 ────────────────────────────────────────────── */
+
+.post-entry,
+.first-entry {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 0 0 calc(var(--gap) * 0.9);
+    margin-bottom: calc(var(--gap) * 0.9);
+    min-height: 0;
+    display: block;
+}
+
+.first-entry {
+    margin-top: 0;
+    padding-bottom: calc(var(--gap) * 1.1);
+}
+
+.entry-header h2,
+.first-entry .entry-header h1 {
+    font-size: clamp(1.3rem, 2.6vw, 1.65rem);
+    line-height: 1.45;
+    transition: color 0.28s var(--ease);
+}
+
+.post-entry:hover .entry-header h2,
+.first-entry:hover .entry-header h1 {
+    color: var(--clay);
+}
+
+.entry-content {
+    color: var(--secondary);
+    font-size: 15.5px;
+    line-height: 1.9;
+    margin: 12px 0;
+    -webkit-line-clamp: 3;
+}
+
+.entry-footer {
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.entry-cover img {
+    border-radius: var(--radius);
+}
+
+.page-header {
+    margin: clamp(36px, 6vh, 68px) auto var(--gap);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
+}
+
+.page-header h1 {
+    font-size: clamp(1.7rem, 4vw, 2.4rem);
+}
+
+/* PaperMod 归档页 */
+.archive-entry,
+.archive-month {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 14px;
+}
+
+.archive-year {
+    font-family: var(--serif);
+    color: var(--clay);
+}
+
+.archive-entry a {
+    color: var(--primary);
+    transition: color 0.25s var(--ease);
+}
+
+.archive-entry a:hover {
+    color: var(--clay);
+}
+
+.pagination a {
+    background: transparent;
+    color: var(--clay);
+    border: 1px solid var(--clay-ring);
+    border-radius: var(--radius);
+    line-height: 34px;
+    transition: border-color 0.25s var(--ease);
+}
+
+.pagination a:hover {
+    border-color: var(--clay);
+}
+
+/* ── 8. 动效（只有两种） ────────────────────────────────────────────────── */
+
+/* 8.1 滚动淡入：仅当 JS 可用且用户没关动效时才隐藏，
+       否则内容一直可见，不会出现「白屏」 */
+.reveal-ready .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.75s var(--ease), transform 0.75s var(--ease);
+}
+
+.reveal-ready .reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+
+/* 8.2 顶部阅读进度条 */
+.read-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 2px;
+    z-index: 60;
+    pointer-events: none;
+    background: transparent;
+}
+
+.read-progress > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--clay);
+    transition: width 0.08s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal-ready .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .read-progress {
+        display: none;
+    }
+}
+
+/* ── 9. 响应式 ──────────────────────────────────────────────────────────── */
+
+@media screen and (max-width: 768px) {
+    :root {
+        --gap: 26px;
+        --content-gap: 26px;
+        --header-height: 62px;
+    }
+
+    .main {
+        padding: var(--gap) 20px;
+    }
+
+    .nav {
+        padding: 0 20px;
+    }
+
+    .hero {
+        padding-top: 44px;
+    }
+
+    .hero-kicker {
+        letter-spacing: 0.26em;
+    }
+
+    /* 时间轴收成单列：日期移到标题上方 */
+    .timeline::before {
+        left: 4px;
+    }
+
+    .tl-item {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding-left: 26px;
+        padding-bottom: 44px;
+    }
+
+    .tl-when {
+        text-align: left;
+        padding-top: 0;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+    }
+
+    .tl-year {
+        font-size: 16px;
+    }
+
+    .tl-md {
+        margin-top: 0;
+    }
+
+    .tl-node {
+        left: 1px;
+        top: 7px;
+    }
+
+    .tl-thumb {
+        max-width: none;
+    }
+
+    .post-content {
+        font-size: 17px;
+    }
+}
+
+@media screen and (max-width: 520px) {
+    .logo a {
+        font-size: 17px;
+    }
+
+    #menu a {
+        padding: 0 8px;
+    }
+
+    #menu a span {
+        font-size: 13.5px;
+    }
+}

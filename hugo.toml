@@ -1,7 +1,91 @@
 baseURL = 'https://www.minipiggy.top/'
 theme = 'PaperMod'
 title = '宝贝的时间胶囊'
-languageCode = 'zh-cn'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 语言
+# 注意：Hugo 的 <html lang="..."> 取的是「语言键」，不是 languageCode。
+# 只要这里没声明语言，Hugo 就默认用 en —— 这正是之前 lang="en" 以及
+# hreflang="en" 的原因。声明 defaultContentLanguage 之后两处一起修好。
+# ─────────────────────────────────────────────────────────────────────────────
+defaultContentLanguage = 'zh-CN'
+defaultContentLanguageInSubdir = false
+
+# 让 Hugo 按中文习惯统计字数（否则中文会被当成一个超长「单词」，
+# 摘要长度和阅读时长都会算错）
+hasCJKLanguage = true
+
+# 首页/列表页摘要取多少字（开启 hasCJKLanguage 后按字计）
+summaryLength = 56
+
+# 让 layouts/robots.txt 真正生成出来（之前线上 404 就是因为没开）
+enableRobotsTXT = true
+
+[languages]
+  [languages.zh-CN]
+    languageCode = 'zh-CN'
+    languageName = '简体中文'
+    languageDirection = 'ltr'
+    weight = 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 顶部导航（之前 ul#menu 是空的，因为 [[menu.main]] 一条都没配）
+# ─────────────────────────────────────────────────────────────────────────────
+[[menu.main]]
+  name = '首页'
+  url = '/'
+  weight = 10
+
+[[menu.main]]
+  name = '归档'
+  url = '/archives/'
+  weight = 20
+
+[[menu.main]]
+  name = '关于'
+  url = '/about/'
+  weight = 30
+
+[params]
+  # 首页 <meta name="description"> 之前是空的，取的就是这个值
+  description = '写给胡知一的时间胶囊。爸爸妈妈把第一次见到她、她出生的那个清晨、以及一封封写给未来的信，都存在这里。'
+  author = '爸爸（胖虎）'
+  mainSections = ['posts']
+
+  # 日期由 PaperMod 的 post_meta.html 按这个格式渲染。
+  # 不配的话会走 :date_long，在 en 语言下就是 "August 29, 2026"。
+  DateFormat = '2006年1月2日'
+
+  defaultTheme = 'auto'
+  disableThemeToggle = false
+  disableLangToggle = true
+
+  ShowReadingTime = false
+  ShowWordCount = false
+  ShowShareButtons = false
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = false
+  ShowCodeCopyButtons = true
+  ShowRssButtonInSectionTermList = false
+  disableSpecial1stPost = true
+  disableScrollToTop = false
+  hidemeta = false
+  comments = false
+
+  # 没有单独指定分享图时的兜底图。放在 assets/images/ 下会被自动裁成 1200×630
+  images = ['images/og-default.jpg']
+
+  [params.assets]
+    theme_color = '#faf7f2'
+
+[markup]
+  [markup.goldmark]
+    # 允许正文里写少量 HTML（落款署名用 <p class="sig">…</p> 标记）
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
 
 [module]
   [module.hugoVersion]

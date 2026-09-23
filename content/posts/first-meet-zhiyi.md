@@ -1,5 +1,6 @@
 ---
 title: "第一次见你：你好，胡知一"
+images: ["images/ultrasound.jpg"]
 date: 2026-05-06
 draft: false
 ---
@@ -11,7 +12,7 @@ draft: false
 
 
 
-关于你的名字，我们为你取名——\*\*胡知一\*\*。
+关于你的名字，我们为你取名——**胡知一**。
 
 
 
@@ -27,12 +28,12 @@ draft: false
 
 
 
-——永远爱你的爸爸（胖虎） 妈妈（猪哥）
+<p class="sig">——永远爱你的爸爸（胖虎） 妈妈（猪哥）</p>
 
 
 
-![第一次见你](/images/dd.jpg)
+![第一次见你](images/ultrasound.jpg)
 
 
-2026年5月
+<p class="sig-date">2026年5月</p>
 
