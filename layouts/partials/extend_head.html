@@ -1,4 +1,16 @@
-{{- /* Head custom content area start */ -}}
-{{- /*     Insert any custom code (web-analytics, resources, etc.) - it will appear in the <head></head> section of every page. */ -}}
-{{- /*     Can be overwritten by partial with the same name in the global layouts. */ -}}
-{{- /* Head custom content area end */ -}}
+{{- /* ═══════════════════════════════════════════════════════════════════════
+   head 自定义区（PaperMod 预留的挂载点，不用改主题）
+
+   这里只做一件事：给 <html> 打上 reveal-ready 标记。
+   滚动淡入的隐藏样式被限制在 .reveal-ready 之下，所以：
+     · 支持 IntersectionObserver → 正常淡入
+     · 浏览器太老 / 用户开了"减少动态效果" → 内容始终可见
+   无论哪种情况都不会出现空白页面。
+   ═══════════════════════════════════════════════════════════════════════ */ -}}
+<script>
+  (function () {
+    if (!('IntersectionObserver' in window)) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.documentElement.classList.add('reveal-ready');
+  })();
+</script>

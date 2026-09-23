@@ -1,22 +1,71 @@
+{{- /* ───────────────────────────────────────────────────────────────────────────
+   响应式图片渲染钩子
+   把 Markdown 里的 ![](images/xxx.jpg) 渲染成带多档 srcset 的 <picture>。
+   原图统一放在 assets/images/（Hugo 只处理 assets/ 下的资源）。
+   构建时自动完成：按需压缩 → 生成 WebP → 输出 480 / 800 / 1200 / 1800 四档。
+   比原图还大的档位会自动跳过，所以小图不会被强行拉大。
+   ─────────────────────────────────────────────────────────────────────────── */ -}}
+
 {{- $u := urls.Parse .Destination -}}
-{{- $src := $u.String -}}
+{{- $img := "" -}}
+
 {{- if not $u.IsAbs -}}
-  {{- $path := strings.TrimPrefix "./" $u.Path }}
-  {{- with or (.PageInner.Resources.Get $path) (resources.Get $path) -}}
-    {{- $src = .RelPermalink -}}
-    {{- with $u.RawQuery -}}
-      {{- $src = printf "%s?%s" $src . -}}
-    {{- end -}}
-    {{- with $u.Fragment -}}
-      {{- $src = printf "%s#%s" $src . -}}
+  {{- $path := strings.TrimPrefix "./" $u.Path -}}
+  {{- $clean := strings.TrimPrefix "/" $path -}}
+  {{- $img = or (.PageInner.Resources.Get $clean) (resources.Get $clean) -}}
+{{- end -}}
+
+{{- $alt := .Text | plainify | transform.HTMLEscape -}}
+
+{{- if $img -}}
+
+  {{- $widths := slice 480 800 1200 1800 -}}
+  {{- $maxW := $img.Width -}}
+  {{- $jpgSet := slice -}}
+  {{- $webpSet := slice -}}
+  {{- $srcURL := "" -}}
+
+  {{- range $widths -}}
+    {{- if le . $maxW -}}
+      {{- $w := . -}}
+      {{- $r := $img.Resize (printf "%dx q86 Lanczos" $w) -}}
+      {{- $jpgSet = $jpgSet | append (printf "%s %dw" $r.RelPermalink $w) -}}
+      {{- $srcURL = $r.RelPermalink -}}
+      {{- if hugo.IsExtended -}}
+        {{- $webpSet = $webpSet | append (printf "%s %dw" ($img.Resize (printf "%dx webp q80 Lanczos" $w)).RelPermalink $w) -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
-{{- end -}}
-{{- $attributes := merge .Attributes (dict "alt" .Text "src" $src "title" (.Title | transform.HTMLEscape) "loading" "lazy") -}}
-<img
-  {{- range $k, $v := $attributes -}}
-    {{- if $v -}}
-      {{- printf " %s=%q" $k $v | safeHTMLAttr -}}
+
+  {{- /* 关键：不直接把 assets/ 里的原图放进 srcset。
+         Hugo 会把原图原样复制进产物，而手机原图是带 EXIF 的 ——
+         里面可能有 GPS 定位和拍摄时间。走不到 480 档的小图（截图、裁剪图）
+         在这里重新编码一份，确保发出去的文件一定不带元数据。 */ -}}
+  {{- if not $jpgSet -}}
+    {{- $r := $img.Process "jpeg q86" -}}
+    {{- $jpgSet = $jpgSet | append (printf "%s %dw" $r.RelPermalink $maxW) -}}
+    {{- $srcURL = $r.RelPermalink -}}
+    {{- if hugo.IsExtended -}}
+      {{- $webpSet = $webpSet | append (printf "%s %dw" ($img.Process "webp q80").RelPermalink $maxW) -}}
     {{- end -}}
-  {{- end -}}>
-{{- /**/ -}}
+  {{- end -}}
+
+  {{- $sizes := "(min-width: 780px) 720px, 100vw" -}}
+
+  <picture>
+    {{- if $webpSet }}
+    <source type="image/webp" srcset="{{ delimit $webpSet ", " }}" sizes="{{ $sizes }}">
+    {{- end }}
+    <img class="post-img" src="{{ $srcURL }}"
+      srcset="{{ delimit $jpgSet ", " }}" sizes="{{ $sizes }}"
+      width="{{ $img.Width }}" height="{{ $img.Height }}"
+      alt="{{ $alt }}"{{ with .Title }} title="{{ . }}"{{ end }} loading="lazy" decoding="async">
+  </picture>
+
+{{- else -}}
+
+  {{- /* 没在 assets/ 里找到：按原样输出，绝不静默丢图 */ -}}
+  {{- warnf "render-image: 未在 assets/ 找到 %q（页面 %s）—— 原图请放到 assets/images/ 下" .Destination .Page.File.Path -}}
+  <img class="post-img" src="{{ .Destination | safeURL }}" alt="{{ $alt }}"{{ with .Title }} title="{{ . }}"{{ end }} loading="lazy" decoding="async">
+
+{{- end -}}

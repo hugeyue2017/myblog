@@ -1,7 +1,20 @@
+{{- /* ───────────────────────────────────────────────────────────────────────────
+   分享图解析（og:image / twitter:image 共用这一个函数）
+   相对 PaperMod 原版的唯一区别：当页面「没有」页面级图片资源时，
+   会再去 assets/ 里找同名的全局资源，并把它压成 1200px 宽的分享图。
+
+   这样做的原因：本站原图统一放在 assets/images/（为了走 Hugo 图片处理），
+   而 PaperMod 原版只会在「页面资源」里找，找不到就退回 absURL —— 
+   结果是 /images/xxx.jpg 这种已经搬走的路径，分享时 404、微信没缩略图。
+   ─────────────────────────────────────────────────────────────────────────── */ -}}
+
 {{- $imgs := slice }}
 {{- $imgParams := .Params.images }}
 {{- $resources := .Resources.ByType "image" -}}
-{{/* Find featured image resources if the images parameter is empty. */}}
+
+{{- $processable := slice "jpg" "jpeg" "png" "gif" "tiff" "bmp" "webp" -}}
+
+{{/* 页面资源里的 featured / cover / thumbnail */}}
 {{- if not $imgParams }}
   {{- $featured := $resources.GetMatch "*feature*" -}}
   {{- if not $featured }}{{ $featured = $resources.GetMatch "{*cover*,*thumbnail*}" }}{{ end -}}
@@ -12,24 +25,36 @@
       "Permalink" .Permalink) }}
   {{- end }}
 {{- end }}
-{{/* Use the first one of site images as the fallback. */}}
+
+{{/* 都没有时，用站点默认分享图兜底 */}}
 {{- if and (not $imgParams) (not $imgs) }}
   {{- with site.Params.images }}
     {{- $imgParams = first 1 . }}
   {{- end }}
 {{- end }}
-{{/* Parse page's images parameter. */}}
+
 {{- range $imgParams }}
   {{- $img := . }}
   {{- $url := urls.Parse $img }}
   {{- if eq $url.Scheme "" }}
-    {{/* Internal image. */}}
-    {{- with $resources.GetMatch $img -}}
-      {{/* Image resource. */}}
+    {{- /* 站内图片：先页面资源，再 assets/ 全局资源 */ -}}
+    {{- $clean := strings.TrimPrefix "/" $url.Path -}}
+    {{- $r := or ($resources.GetMatch $clean) (or ($resources.GetMatch $img) (resources.Get $clean)) -}}
+    {{- if $r }}
+      {{- /* 压到 1200px 宽当分享图；本来就更小的图不放大。
+             但两种情况都重新编码一份 —— 直接把原图挂到 og:image 上，
+             会把原图连同 EXIF（含 GPS 定位）一起公开出去。 */ -}}
+      {{- if in $processable $r.MediaType.SubType -}}
+        {{- if gt $r.Width 1200 -}}
+          {{- $r = $r.Resize "1200x q82 Lanczos" -}}
+        {{- else -}}
+          {{- $r = $r.Process "jpeg q82" -}}
+        {{- end -}}
+      {{- end }}
       {{- $imgs = $imgs | append (dict
-        "Image" .
-        "RelPermalink" .RelPermalink
-        "Permalink" .Permalink) }}
+        "Image" $r
+        "RelPermalink" $r.RelPermalink
+        "Permalink" $r.Permalink) }}
     {{- else }}
       {{- $imgs = $imgs | append (dict
         "RelPermalink" (relURL $img)
@@ -37,7 +62,7 @@
       ) }}
     {{- end }}
   {{- else }}
-    {{/* External image */}}
+    {{- /* 外链图片 */ -}}
     {{- $imgs = $imgs | append (dict
       "RelPermalink" $img
       "Permalink" $img
