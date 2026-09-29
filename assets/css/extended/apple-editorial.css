@@ -1,0 +1,1118 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Apple Editorial —— 苹果设计语言视觉层
+   ───────────────────────────────────────────────────────────────────────────
+   这一层完全覆盖在 PaperMod 之上，不改主题任何文件。head.html 里的
+   `resources.Match "css/extended/*.css"` 会自动把它追加到样式 bundle 末尾，
+   所以这里的规则天然后置、优先级更高。
+
+   设计规则
+     · 表面   纯白 #ffffff / 系统灰 #f5f5f7；深色 #000000 / #1c1c1e
+     · 文字   #1d1d1f（Apple 近黑）／#6e6e73（次级）／#86868b（三级）
+     · 强调   陶土红 #b4552d，全站唯一有色相的颜色，只用在点击目标与焦点上
+     · 字体   正文与 UI 用系统西文（-apple-system / SF Pro）+ 中文黑体；
+              标题与落款保留衬线，那是「写给女儿的信」的语气来源
+     · 字距   显示级大标题收紧（-0.01em），中文正文微放（+0.012em）
+     · 形状   卡片 22px / 图片 16px / 药丸 980px，不再用 2px 硬边
+     · 层次   一律用柔和投影 + 发丝线，不用重边框
+     · 动效   只有两种：滚动淡入 + 顶部阅读进度条，统一 Apple 缓动
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 设计令牌 ────────────────────────────────────────────────────────── */
+
+:root {
+    /* 覆盖 PaperMod 变量 */
+    --gap: 40px;
+    --content-gap: 34px;
+    --nav-width: 1024px;
+    --main-width: 688px;
+    --header-height: 48px;
+    --footer-height: 104px;
+    --radius: 18px;
+
+    /* PaperMod 的颜色变量 → Apple 中性阶 */
+    --theme: #ffffff;
+    --entry: #ffffff;
+    --primary: #1d1d1f;
+    --secondary: #6e6e73;
+    --tertiary: #d2d2d7;
+    --content: #1d1d1f;
+    --code-bg: #f5f5f7;
+    --code-block-bg: #1d1d1f;
+    --border: rgba(0, 0, 0, 0.08);
+
+    /* 自有令牌 */
+    --bg: #ffffff;
+    --bg-soft: #f5f5f7;
+    --bg-elev: #ffffff;
+    --ink: #1d1d1f;
+    --ink-2: #6e6e73;
+    --ink-3: #86868b;
+    --hairline: rgba(0, 0, 0, 0.08);
+    --hairline-strong: #d2d2d7;
+    --nav-bg: rgba(255, 255, 255, 0.72);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px rgba(0, 0, 0, 0.07);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.06), 0 22px 48px rgba(0, 0, 0, 0.11);
+
+    /* 唯一强调色 */
+    --accent: #b4552d;
+    --accent-wash: rgba(180, 85, 45, 0.09);
+    --accent-ring: rgba(180, 85, 45, 0.22);
+    --accent-select: rgba(180, 85, 45, 0.18);
+
+    --pgutter: 28px;
+    --rail-x: 96px;
+
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+        "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+        "Source Han Sans SC", "Noto Sans SC", "Segoe UI", Roboto, sans-serif;
+    --serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC", "SimSun",
+        "STSong", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /* Apple 的缓动曲线 */
+    --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme="dark"] {
+    --theme: #000000;
+    --entry: #1c1c1e;
+    --primary: #f5f5f7;
+    --secondary: #a1a1a6;
+    --tertiary: #3a3a3c;
+    --content: #f5f5f7;
+    --code-bg: #1c1c1e;
+    --code-block-bg: #0a0a0a;
+    --border: rgba(255, 255, 255, 0.14);
+
+    --bg: #000000;
+    --bg-soft: #1c1c1e;
+    --bg-elev: #1c1c1e;
+    --ink: #f5f5f7;
+    --ink-2: #a1a1a6;
+    --ink-3: #86868b;
+    --hairline: rgba(255, 255, 255, 0.14);
+    --hairline-strong: #3a3a3c;
+    --nav-bg: rgba(0, 0, 0, 0.72);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 28px rgba(0, 0, 0, 0.55);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.7), 0 22px 48px rgba(0, 0, 0, 0.6);
+
+    /* #b4552d 在黑底上只有 3.6:1，同色相提亮到 7:1 */
+    --accent: #e08a63;
+    --accent-wash: rgba(224, 138, 99, 0.16);
+    --accent-ring: rgba(224, 138, 99, 0.3);
+    --accent-select: rgba(224, 138, 99, 0.26);
+}
+
+/* ── 2. 基础排版与全局细节 ──────────────────────────────────────────────── */
+
+html {
+    background: var(--bg);
+    scroll-behavior: smooth;
+    /* 吸顶导航之下留出锚点落位空间 */
+    scroll-padding-top: calc(var(--header-height) + 20px);
+}
+
+body {
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.9;
+    letter-spacing: 0.012em;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+}
+
+/* 首页/列表页的 body 带 .list，PaperMod 会把底色换成灰，这里拉回表面色 */
+.list,
+[data-theme="dark"] .list {
+    background: var(--bg);
+}
+
+::selection {
+    background: var(--accent-select);
+    color: var(--ink);
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+.main {
+    max-width: calc(var(--main-width) + var(--pgutter) * 2);
+    padding: 0 var(--pgutter);
+}
+
+/* 首页内容更宽：卡片式时间轴在 688px 里会挤 */
+body.is-home {
+    --main-width: 892px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.post-title,
+.page-header h1,
+.entry-header h1,
+.entry-header h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* 正文里的中文加粗：不用 700，改用底色微亮 + 圆角，避免笔画糊在一起 */
+.post-content strong,
+.post-content b {
+    font-weight: 500;
+    background: var(--accent-wash);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding: 0.06em 0.3em;
+    border-radius: 6px;
+}
+
+/* 正文内链：苹果不用下划线描边，靠颜色区分，hover 才现下划线 */
+.post-content a,
+.post-description a {
+    color: var(--accent);
+    text-decoration: none;
+    box-shadow: none;
+    border-bottom: 0;
+    transition: opacity 0.25s var(--ease);
+}
+
+.post-content a:hover,
+.post-description a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.28em;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--accent-ring);
+}
+
+/* 落款：衬线、右对齐 */
+.post-content .sig {
+    font-family: var(--serif);
+    font-size: 1.02em;
+    line-height: 1.9;
+    text-align: right;
+    color: var(--ink);
+    margin: 2.6em 0 0.3em;
+}
+
+.post-content .sig-date {
+    font-family: var(--serif);
+    font-size: 0.92em;
+    text-align: right;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+    margin-bottom: 3.2em;
+}
+
+/* ── 3. 导航：磨砂吸顶 ──────────────────────────────────────────────────── */
+/* 主题里 .header 其实一条样式都没有（既不吸顶也没底色），这里从零建 */
+
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    height: var(--header-height);
+    background: var(--nav-bg);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--hairline);
+}
+
+.nav {
+    flex-wrap: nowrap;
+    height: var(--header-height);
+    line-height: var(--header-height);
+    max-width: calc(var(--nav-width) + var(--pgutter) * 2);
+    padding: 0 var(--pgutter);
+}
+
+.logo,
+#menu {
+    margin: auto 0;
+    flex-wrap: nowrap;
+}
+
+.logo a {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+}
+
+.logo a img,
+.logo a svg {
+    border-radius: 8px;
+    margin-inline-end: 9px;
+}
+
+.logo-switches {
+    margin: auto 0 auto 6px;
+}
+
+button#theme-toggle {
+    font-size: 17px;
+    color: var(--ink-2);
+    border-radius: 980px;
+    transition: color 0.25s var(--ease);
+}
+
+button#theme-toggle svg {
+    width: 17px;
+    height: 17px;
+    vertical-align: middle;
+}
+
+button#theme-toggle:hover {
+    color: var(--accent);
+}
+
+/* 菜单：苹果的导航没有下划线，靠明度区分选中态 */
+#menu {
+    gap: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#menu::-webkit-scrollbar {
+    display: none;
+}
+
+#menu li + li {
+    margin-inline-start: 0;
+}
+
+#menu a {
+    font-size: 14px;
+    padding: 0 15px;
+}
+
+#menu a span {
+    color: var(--ink-2);
+    letter-spacing: 0.02em;
+    border-bottom: 0;
+    padding-bottom: 0;
+    transition: color 0.25s var(--ease);
+}
+
+#menu .active {
+    font-weight: 500;
+    border-bottom: 0;
+}
+
+#menu a:hover span,
+#menu a span.active {
+    color: var(--ink);
+    border-bottom-color: transparent;
+}
+
+/* ── 4. 页脚 / 回到顶部 ─────────────────────────────────────────────────── */
+
+.footer {
+    max-width: calc(var(--main-width) + var(--pgutter) * 2);
+    margin: clamp(56px, 9vh, 104px) auto 0;
+    padding: 26px var(--pgutter);
+    border-top: 1px solid var(--hairline);
+    color: var(--ink-3);
+    font-size: 12.5px;
+    line-height: 1.9;
+    letter-spacing: 0.04em;
+}
+
+.footer a {
+    color: inherit;
+    border-bottom: 0;
+    transition: color 0.25s var(--ease);
+}
+
+.footer a:hover {
+    color: var(--accent);
+    border-bottom: 0;
+}
+
+.top-link {
+    width: 42px;
+    height: 42px;
+    padding: 13px;
+    right: 26px;
+    bottom: 30px;
+    border: 1px solid var(--hairline);
+    background: var(--nav-bg);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    box-shadow: var(--shadow-1);
+    color: var(--ink-2);
+    transition: color 0.25s var(--ease), visibility 0.4s, opacity 0.4s;
+}
+
+.top-link:hover,
+.top-link:focus-visible {
+    color: var(--accent);
+}
+
+/* ── 5. 首页 Hero ───────────────────────────────────────────────────────── */
+
+.hero {
+    text-align: center;
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: clamp(64px, 12vh, 132px) 0 clamp(52px, 8vh, 84px);
+}
+
+.hero-kicker {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin: 0 0 20px;
+}
+
+.hero-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(2.7rem, 8.4vw, 5.3rem);
+    line-height: 1.1;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin: 0 0 24px;
+}
+
+.hero-lead {
+    font-size: 17.5px;
+    line-height: 1.9;
+    letter-spacing: 0.012em;
+    color: var(--ink-2);
+    margin: 0 auto;
+    max-width: 30em;
+}
+
+/* 时间轴上方的小节标题 */
+.tl-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 0 0 clamp(30px, 4.6vh, 46px);
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+}
+
+.tl-head::before,
+.tl-head::after {
+    content: "";
+    height: 1px;
+    width: clamp(24px, 8vw, 64px);
+    background: var(--hairline);
+}
+
+.tl-head-label {
+    color: var(--ink-2);
+    font-weight: 600;
+}
+
+/* ── 6. 首页时间轴卡片 ──────────────────────────────────────────────────── */
+
+.timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+/* 贯穿的轨道线 */
+.timeline::before {
+    content: "";
+    position: absolute;
+    top: 16px;
+    bottom: 40px;
+    left: calc(var(--rail-x) - 0.5px);
+    width: 1px;
+    background: var(--hairline);
+}
+
+.tl-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--rail-x) 1fr;
+    gap: 0 40px;
+    padding-bottom: clamp(20px, 2.8vh, 30px);
+}
+
+.tl-item:last-child {
+    padding-bottom: 0;
+}
+
+/* 左侧日期 */
+.tl-when {
+    text-align: right;
+    padding: 24px 24px 0 0;
+}
+
+.tl-year {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+
+.tl-md {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 轨道节点：hover 变强调色并散出光圈 */
+.tl-node {
+    position: absolute;
+    left: calc(var(--rail-x) - 5px);
+    top: 29px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1.5px solid var(--hairline-strong);
+    box-shadow: 0 0 0 0 var(--accent-ring);
+    transition: background-color 0.4s var(--ease), border-color 0.4s var(--ease),
+        box-shadow 0.5s var(--ease);
+}
+
+.tl-item:hover .tl-node {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 6px var(--accent-ring);
+}
+
+/* 整块可点卡片 */
+.tl-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    padding: 24px 26px;
+    border: 1px solid var(--hairline);
+    border-radius: 22px;
+    background: var(--bg-elev);
+    transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease),
+        border-color 0.45s var(--ease);
+}
+
+.tl-card.has-thumb {
+    grid-template-columns: 1fr 208px;
+    gap: 30px;
+}
+
+.tl-card:hover {
+    transform: translateY(-3px);
+    border-color: transparent;
+    box-shadow: var(--shadow-1);
+}
+
+.tl-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 22px;
+}
+
+.tl-copy {
+    min-width: 0;
+}
+
+.tl-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(1.3rem, 2.1vw, 1.58rem);
+    line-height: 1.35;
+    letter-spacing: -0.008em;
+    color: var(--ink);
+    margin: 0 0 10px;
+    transition: color 0.3s var(--ease);
+}
+
+.tl-card:hover .tl-title {
+    color: var(--accent);
+}
+
+.tl-sum {
+    color: var(--ink-2);
+    font-size: 15px;
+    line-height: 1.8;
+    letter-spacing: 0.008em;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tl-thumb {
+    margin: 0;
+    display: block;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--bg-soft);
+    aspect-ratio: 4 / 3;
+}
+
+.tl-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 42%;
+    transition: transform 0.9s var(--ease);
+}
+
+.tl-thumb--portrait img {
+    /* 竖图（手机拍的合影）取稍偏下的位置：人像的脸一般不在画面正中 */
+    object-position: center 60%;
+}
+
+.tl-card:hover .tl-thumb img {
+    transform: scale(1.04);
+}
+
+/* ── 7. 文章页 ──────────────────────────────────────────────────────────── */
+
+.post-header {
+    margin: clamp(40px, 7vh, 84px) auto clamp(28px, 4vh, 42px);
+}
+
+.post-title {
+    font-size: clamp(2rem, 4.6vw, 2.9rem);
+    line-height: 1.24;
+    letter-spacing: -0.012em;
+}
+
+.post-meta {
+    margin-top: 16px;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    color: var(--ink-3);
+}
+
+.post-description {
+    color: var(--ink-2);
+    margin-top: 14px;
+}
+
+.post-content {
+    margin: clamp(24px, 3.6vh, 36px) 0 clamp(24px, 3.4vh, 36px);
+    font-size: 17px;
+    line-height: 1.9;
+    letter-spacing: 0.012em;
+    color: var(--ink);
+}
+
+/* 段落节奏不再跟 --content-gap 走，改用行高倍数，苹果的做法 */
+.post-content p,
+.post-content dl,
+.post-content ol,
+.post-content ul,
+.post-content figure,
+.post-content table {
+    margin-bottom: 1.5em;
+}
+
+.post-content h2,
+.post-content h3,
+.post-content h4 {
+    margin: 2.1em 0 0.7em;
+    line-height: 1.4;
+}
+
+.post-content h2 {
+    font-size: clamp(1.38rem, 2.6vw, 1.62rem);
+}
+
+.post-content h3 {
+    font-size: clamp(1.16rem, 2.1vw, 1.3rem);
+}
+
+.post-content blockquote {
+    margin: 1.9em 0;
+    padding: 4px 0 4px 22px;
+    border-inline-start: 2px solid var(--accent-ring);
+    color: var(--ink-2);
+    font-family: var(--serif);
+    font-size: 1.02em;
+    line-height: 1.85;
+}
+
+.post-content hr {
+    height: 1px;
+    background: var(--hairline);
+    border: 0;
+    margin: 2.6em 0;
+}
+
+.post-content img,
+.post-content .post-img {
+    width: 100%;
+    height: auto;
+    border-radius: 16px;
+    margin: 2em 0;
+    background: var(--bg-soft);
+}
+
+/* 图注：图片下方一行小字，居中、弱化、微字距。
+   有 <figcaption> 时把图片与图注收成一组，避免出现「图 — 大字缝 — 图注」。 */
+.post-content figure {
+    margin: 2em 0;
+}
+
+.post-content figure > img,
+.post-content figure > picture > img,
+.post-content figure > picture {
+    margin: 0;
+    display: block;
+    width: 100%;
+}
+
+.post-content figcaption {
+    margin-top: 14px;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 0.875em;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+}
+
+.post-content figcaption p {
+    margin: 0;
+}
+
+.post-content code {
+    border-radius: 6px;
+    background: var(--bg-soft);
+    padding: 3px 6px;
+}
+
+.post-content pre code,
+.post-content .highlight:not(table) {
+    border-radius: 14px;
+}
+
+/* 标签：药丸 */
+.post-tags {
+    gap: 8px;
+    margin-top: clamp(28px, 4vh, 40px);
+}
+
+.post-tags a {
+    border-radius: 980px;
+    background: var(--bg-soft);
+    border: 1px solid transparent;
+    color: var(--ink-2);
+    font-size: 13px;
+    line-height: 32px;
+    padding: 0 15px;
+    letter-spacing: 0.03em;
+    transition: color 0.25s var(--ease), background-color 0.25s var(--ease);
+}
+
+.post-tags a:hover {
+    background: var(--accent-wash);
+    color: var(--accent);
+    border-color: transparent;
+}
+
+/* 上下篇：两张窄卡，只有一篇时靠右（像苹果那个「下一页 ›」） */
+.paginav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: clamp(22px, 3.2vh, 34px);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    line-height: 1.6;
+}
+
+.paginav a {
+    display: block;
+    flex: 1 1 190px;
+    max-width: 330px;
+    padding: 16px 20px;
+    border: 1px solid var(--hairline);
+    border-radius: 18px;
+    background: transparent;
+    transition: transform 0.35s var(--ease), background-color 0.35s var(--ease),
+        border-color 0.35s var(--ease);
+}
+
+/* 主题在 title 后面塞了个 <br>，title 已经改成 block，这里要去掉多余空行 */
+.paginav br {
+    display: none;
+}
+
+.paginav a.next {
+    text-align: right;
+}
+
+.paginav a:hover {
+    background: var(--bg-soft);
+    border-color: transparent;
+    transform: translateY(-2px);
+}
+
+.paginav .title {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: none;
+    color: var(--accent);
+}
+
+.paginav a > span:last-child {
+    font-family: var(--serif);
+    font-size: 1.02em;
+    color: var(--ink);
+    line-height: 1.5;
+}
+
+/* ── 8. 列表 / 归档 / 分页 ──────────────────────────────────────────────── */
+
+.post-entry,
+.first-entry {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    padding: 0 0 26px;
+    margin-bottom: 26px;
+    min-height: 0;
+    display: block;
+}
+
+.first-entry {
+    margin-top: 0;
+}
+
+.entry-header h2,
+.first-entry .entry-header h1 {
+    font-size: clamp(1.28rem, 2.4vw, 1.55rem);
+    line-height: 1.42;
+    transition: color 0.3s var(--ease);
+}
+
+.post-entry:hover .entry-header h2,
+.first-entry:hover .entry-header h1 {
+    color: var(--accent);
+}
+
+.entry-content {
+    color: var(--ink-2);
+    font-size: 15px;
+    line-height: 1.85;
+    margin: 10px 0 0;
+    -webkit-line-clamp: 3;
+}
+
+.entry-footer {
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: var(--ink-3);
+}
+
+.entry-cover img {
+    border-radius: 16px;
+}
+
+.page-header {
+    margin: clamp(40px, 7vh, 76px) auto clamp(28px, 4vh, 42px);
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.page-header h1 {
+    font-size: clamp(1.72rem, 4vw, 2.4rem);
+    line-height: 1.24;
+}
+
+/* 归档页：2px 的年份分隔线太重，统一成发丝线 */
+.archive-year:not(:last-of-type) {
+    border-bottom: 1px solid var(--hairline);
+}
+
+.archive-month:not(:last-of-type) {
+    border-bottom: 1px solid var(--hairline);
+}
+
+.archive-entry {
+    padding: 4px 0;
+    margin: 8px 0;
+}
+
+.archive-year-header {
+    font-size: clamp(1.5rem, 3vw, 1.9rem);
+    line-height: 1.3;
+}
+
+.archive-month-header {
+    width: 132px;
+    margin: 22px 0;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-2);
+}
+
+.archive-entry-title {
+    font-family: var(--serif);
+    font-size: 1.06rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.archive-count {
+    color: var(--ink-3);
+    font-size: 11.5px;
+    font-weight: 400;
+}
+
+.archive-meta {
+    color: var(--ink-3);
+    font-size: 12.5px;
+    margin-top: 3px;
+}
+
+.archive-entry a {
+    color: var(--ink);
+    transition: color 0.25s var(--ease);
+}
+
+.archive-entry a:hover {
+    color: var(--accent);
+}
+
+/* 分页：药丸按钮 */
+.pagination a {
+    background: var(--bg-soft);
+    color: var(--ink);
+    border: 1px solid transparent;
+    border-radius: 980px;
+    font-size: 13px;
+    line-height: 36px;
+    padding: 0 18px;
+    letter-spacing: 0.03em;
+    transition: background-color 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+.pagination a:hover {
+    background: var(--accent-wash);
+    color: var(--accent);
+}
+
+/* ── 9. 动效（只有两种） ────────────────────────────────────────────────── */
+
+/* 9.1 滚动淡入：只在 JS 可用且用户没关动效时才隐藏，否则内容始终可见 */
+.reveal-ready .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.reveal-ready .reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+
+/* 9.2 顶部阅读进度条 */
+.read-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 2px;
+    z-index: 60;
+    pointer-events: none;
+    background: transparent;
+}
+
+.read-progress > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+    transition: width 0.08s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .reveal-ready .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .read-progress {
+        display: none;
+    }
+
+    .tl-card,
+    .tl-thumb img,
+    .paginav a {
+        transition: none;
+    }
+}
+
+/* ── 10. 响应式 ─────────────────────────────────────────────────────────── */
+
+@media screen and (max-width: 900px) {
+    .tl-card.has-thumb {
+        grid-template-columns: 1fr 168px;
+        gap: 22px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    :root {
+        --pgutter: 20px;
+        --rail-x: 0px;
+        --header-height: 46px;
+        --gap: 26px;
+        --content-gap: 26px;
+    }
+
+    /* ---------------- 手机时间轴 ----------------
+       两栏（日期列 + 卡片）在 390px 上只剩 248px 给卡片，太窄。
+       改为：日期搬到卡片上方，轨道线贴到内容区最左，卡片拿回 324px。 */
+    .timeline::before {
+        top: 8px;
+        bottom: 30px;
+    }
+
+    .tl-item {
+        grid-template-columns: 1fr;
+        gap: 0;
+        padding-left: 26px;
+        padding-bottom: 22px;
+    }
+
+    .tl-when {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        text-align: left;
+        padding: 0 0 9px;
+    }
+
+    .tl-year {
+        font-size: 13px;
+    }
+
+    .tl-md {
+        font-size: 11.5px;
+        margin-top: 0;
+    }
+
+    .tl-node {
+        left: -5px;
+        top: 4px;
+    }
+
+    .tl-card {
+        padding: 18px 18px;
+        border-radius: 20px;
+    }
+
+    /* 图在上、文在下 */
+    .tl-card.has-thumb {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .tl-card .tl-thumb {
+        order: -1;
+        aspect-ratio: 3 / 2;
+    }
+
+    .tl-title {
+        font-size: 1.24rem;
+    }
+
+    .tl-sum {
+        font-size: 14.5px;
+        line-height: 1.78;
+    }
+
+    .hero {
+        padding-top: 52px;
+        padding-bottom: 44px;
+    }
+
+    .hero-lead {
+        font-size: 16px;
+    }
+
+    .post-content {
+        font-size: 16.5px;
+    }
+
+    .post-content p,
+    .post-content dl,
+    .post-content ol,
+    .post-content ul,
+    .post-content figure,
+    .post-content table {
+        margin-bottom: 1.35em;
+    }
+
+    /* 手机上上下篇各占一行、都靠左 */
+    .paginav a {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+
+    .paginav a.next {
+        text-align: left;
+    }
+
+    .top-link {
+        right: 16px;
+        bottom: 18px;
+    }
+}
+
+@media screen and (max-width: 520px) {
+    .logo a {
+        font-size: 15.5px;
+    }
+
+    #menu a {
+        padding: 0 11px;
+    }
+
+    #menu a span {
+        font-size: 13.5px;
+    }
+
+    .tl-card {
+        padding: 18px 18px;
+    }
+
+    .tl-head::before,
+    .tl-head::after {
+        display: none;
+    }
+}
