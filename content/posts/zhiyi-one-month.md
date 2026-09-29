@@ -1,12 +1,12 @@
-\---  
-title: "小猪咪满月了"  
-date: 2026-09-29  
-draft: false  
-images: ["images/one-month-1.jpg"]  
-categories: ["时间胶囊"]  
-tags: ["胡知一", "满月", "成长记录"]  
-summary: "三十天，从手忙脚乱到勉强敢说一句：我们好像会一点点带娃了。"  
-\---
+---
+title: "小猪咪满月了"
+date: 2026-09-29
+draft: false
+images: ["images/one-month-1.jpg"]
+categories: ["时间胶囊"]
+tags: ["胡知一", "满月", "成长记录"]
+summary: "三十天，从手忙脚乱到勉强敢说一句：我们好像会一点点带娃了。"
+---
 
 小猪咪，今天你满月了。
 
