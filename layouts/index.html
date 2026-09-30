@@ -1,5 +1,13 @@
 {{- /* ==========================================================
-   index.html — 首页「本期」：封面故事 + 胶片条 + 全部存档
+   index.html — 首页「本期」：封面故事（导语版）+ 胶片条 + 全部存档
+
+   v2 改动：
+   1. 封面故事不再铺最新一篇的全文。原来首页整页高约 6500px，
+      「胶片条」「存档」被埋到第 3 屏以下，封面失去了导览作用。
+      现在只取正文的开头（约 2 段 + 第一张图），后面接「读全文 →」。
+      全文仍在文章页完整保留。
+   2. 胶片条移出 .wrap，改成通栏出血（原来是 1068px 宽的一条色带，
+      看着像贴歪的纸片）。
    ========================================================== */ -}}
 {{ define "main" }}
 {{- $t1 := site.Params.capsuleTitle1 | default "宝贝的" -}}
@@ -14,22 +22,56 @@
 {{- $latest := index . 0 -}}
 {{- $total := len $pages -}}
 
+{{- /* ---------- 导语：截取正文开头 ----------
+   按 </p> 切块。除最后一块外，每块原本都以 </p> 结尾（被切掉了），
+   所以重新拼的时候要用 </p> 接回去。
+   取到「满 2 段 且 有 1 张图」就停，最多 4 块。 */ -}}
+{{- $chunks := split $latest.Content "</p>" -}}
+{{- $last := sub (len $chunks) 1 -}}
+{{- $take := 0 -}}
+{{- $paras := 0 -}}
+{{- $figs := 0 -}}
+{{- range $i, $c := $chunks -}}
+  {{- if and (lt $i $last) (lt $take 4) (or (lt $paras 2) (lt $figs 1)) -}}
+    {{- $take = add $take 1 -}}
+    {{- $paras = add $paras (len (findRE `<p[ >]` $c)) -}}
+    {{- $figs = add $figs (len (findRE `<figure` $c)) -}}
+  {{- end -}}
+{{- end -}}
+{{- $teaser := delimit (first $take $chunks) "</p>" -}}
+{{- if le $take $last -}}{{- $teaser = printf "%s</p>" $teaser -}}{{- end -}}
+
+{{- /* 导语里没有图时（比如纯文字的那几篇），用封面图/首图兜底，
+       否则「本期封面」会是一块没有视觉的纯文字。
+       图片本身不需要再判断宽高 —— 横幅给 .wide，竖幅留在正文测量宽里。 */ -}}
+{{- $lead := "" -}}
+{{- with $latest.Params.cover -}}
+  {{- if reflect.IsMap . }}{{ with .image }}{{ $lead = . }}{{ end }}{{ else }}{{ $lead = . }}{{ end -}}
+{{- end -}}
+{{- if not $lead }}{{ with $latest.Params.images }}{{ $lead = index . 0 }}{{ end }}{{ end -}}
+{{- $leadWide := false -}}
+{{- if and (eq $figs 0) $lead -}}
+  {{- with resources.Get (strings.TrimPrefix "/" $lead) -}}
+    {{- if ge .Width .Height }}{{ $leadWide = true }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+
 <div class="wrap">
 
   {{- /* ---------- 报头 ---------- */}}
   <section class="masthead">
-    <div class="kicker rv">Vol. {{ printf "%02d" $total }} &nbsp;·&nbsp; {{ $latest.Date.Format "2006 年 1 月" }}</div>
+    <div class="kicker rv">Vol. {{ printf "%02d" $total }} &nbsp;·&nbsp; 更新于 {{ $latest.Date.Format "2006 年 1 月 2 日" }}</div>
     <h1 class="rv d1">{{ $t1 }}<br><em>{{ $t2 }}</em></h1>
     <div class="mast-rule rv d2">
       <span>{{ site.Params.capsuleDedication | default "写给未来的你" }}</span>
       <span class="sep">/</span>
       <span>{{ site.Params.capsuleHost | default "爸爸 · 胖虎 主持" }}</span>
       <span class="grow"></span>
-      <span>{{ $latest.Date.Format "2006 年 1 月 2 日" }}</span>
+      <span>共 {{ $total }} 篇</span>
     </div>
   </section>
 
-  {{- /* ---------- 封面故事 ---------- */}}
+  {{- /* ---------- 封面故事（导语） ---------- */}}
   <section class="feature" id="feature">
     <aside class="meta rv">
       <div class="meta-list">
@@ -47,7 +89,23 @@
     <div class="body">
       <h2 class="rv d1"><a href="{{ $latest.RelPermalink }}">{{ $latest.Title }}</a></h2>
       <p class="standfirst rv d2">{{ $latest.Params.summary | default ($latest.Summary | plainify | truncate 90) }}</p>
-      <div class="prose drop rv d3">{{ $latest.Content }}</div>
+
+      {{- if and (eq $figs 0) $lead }}
+      <figure class="cap-fig rv d3{{ if $leadWide }} wide{{ end }}">
+        {{- partial "capsule-img.html" (dict
+              "src" $lead
+              "alt" ($latest.Params.cover.alt | default $latest.Title)
+              "sizes" (cond $leadWide "(max-width:720px) 92vw, 866px" "(max-width:720px) 92vw, 672px")
+              "max" 1600) -}}
+      </figure>
+      {{- end }}
+
+      <div class="prose drop rv d3">{{ $teaser | safeHTML }}</div>
+
+      <div class="readmore rv">
+        <a href="{{ $latest.RelPermalink }}"><span>读全文</span><span class="ar">→</span></a>
+        <span class="rcount">约 {{ $latest.WordCount }} 字</span>
+      </div>
     </div>
   </section>
 
@@ -58,9 +116,12 @@
   </div>
   {{ end }}
 
-  {{- /* ---------- 胶片条 ---------- */}}
-  {{ with site.Data.filmstrip }}
-  <section class="filmstrip" id="strip">
+</div>
+
+{{- /* ---------- 胶片条（通栏，在 .wrap 之外） ---------- */}}
+{{ with site.Data.filmstrip }}
+<section class="filmstrip" id="strip">
+  <div class="strip-wrap">
     <div class="strip-head">
       <h3>{{ site.Params.capsuleFilmTitle | default "最近的胶片" }}</h3>
       <span>SCROLL →</span>
@@ -72,14 +133,17 @@
         {{- partial "capsule-img.html" (dict
               "src" .img
               "alt" .title
-              "sizes" "(max-width:720px) 62vw, 300px"
+              "sizes" "(max-width:720px) 80vw, 460px"
               "max" 760) -}}
         <p><b>{{ .title }}</b>{{ with .note }}<br>{{ . }}{{ end }}</p>
       </div>
       {{- end }}
     </div>
-  </section>
-  {{ end }}
+  </div>
+</section>
+{{ end }}
+
+<div class="wrap">
 
   {{- /* ---------- 存档 ---------- */}}
   <section class="archive" id="archive">

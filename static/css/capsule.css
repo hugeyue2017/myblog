@@ -1,24 +1,97 @@
 /* ============================================================
-   宝贝的时间胶囊 · 版本 A「编辑杂志刊」
+   宝贝的时间胶囊 · 版本 A「编辑杂志刊」· v2 修订
    Hugo 自定义主题样式（覆盖 PaperMod，不修改主题本身）
    删除本文件与项目根 layouts/ 即可完全回退
+
+   ── v2 改了什么（2026-10）────────────────────────────────
+   1. 版面：原先正文挤在 12 栏里的第 4~10 栏，左边空 3 栏、右边空 2 栏，
+      1279px 以上屏幕上整页重心偏左、右半张纸是空的。
+      现改成「边注栏 + 测量宽正文」：左栏放元信息（贴着正文右对齐），
+      正文定宽 42rem（约 33 汉字/行），右边留出对称外白边。
+      宽图可用 .wide / .full 出血，把外白边用起来。
+   2. 对比度：--ink-faint 由 #9A9186 提到 #6F6659，
+      在纸白上从 2.6:1 提到 5.1:1（WCAG AA 小字要求 4.5:1）。
+      原来元信息、图注、存档日期都是 11px 的浅灰，手机阳光下基本看不见。
+      纸纹 opacity 也从 .35 降到 .16，纸面不再发脏。
+   3. 照片：删掉 grayscale 滤镜。原来正文图 grayscale(.18)、胶片条 .55，
+      靠 hover 恢复彩色 —— 手机上根本没有 hover，等于所有照片永远是灰的。
+   4. 胶片条：原来强制 3:4 + object-fit:cover，横幅照片会被裁掉大半。
+      现在按原始画幅显示（统一高度、宽度自适应），并把这一条改成通栏出血。
+   5. 深色模式：暖黑 #17140F（不是纯黑），默认跟随系统，可手动切换。
+   6. 手机端：正文提到元信息之前（原来先看到 350px 的日期/分类/作者），
+      元信息压成一行卡片放到正文之后。
+   7. 正文行高 2.05 → 1.9，中文补 .01em 字距；首字下沉基线对齐。
    ============================================================ */
 
 /* ---------- 1. 变量与基础 ---------- */
 :root{
+  /* 浅色（默认）：暖纸白 */
   --paper:#FAF7F2;
-  --paper-2:#F2EDE4;
+  --paper-2:#F3EFE7;
   --ink:#1A1815;
-  --ink-soft:#615A51;
-  --ink-faint:#9A9186;
+  --ink-soft:#5C554B;
+  --ink-faint:#6F6659;          /* v2：原 #9A9186 */
   --rule:#DAD2C6;
+  --rule-soft:#E7E0D4;
   --accent:#C0402C;
+  --accent-soft:rgba(192,64,44,.30);
+  --topbar:rgba(250,247,242,.86);
+  --noise-opacity:.16;          /* v2：原 .35 */
+  --shadow:0 1px 2px rgba(26,24,21,.06);
+
   --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,"SimSun",Georgia,serif;
   --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,sans-serif;
   --ease:cubic-bezier(.22,.61,.36,1);
+
+  /* v2：版面骨架 —— 下面 4 个值同时被 .wrap / .feature / 出血计算引用，
+     想调整整页留白只改这里 */
+  --wrap-max:1180px;
+  --wrap-pad:clamp(20px,5vw,56px);
+  --rail:clamp(104px,11vw,150px);     /* 左侧边注栏宽（下限 104px：再窄标签就折行了） */
+  --rail-gap:clamp(22px,3.6vw,52px);  /* 边注栏与正文的间距 */
+  --measure:42rem;                    /* 正文测量宽 */
+
+  /* 出血时用来抵掉 .wrap 在宽屏上的居中偏移 */
+  --wrap-center:max(0px,calc((100vw - var(--wrap-max)) / 2));
 }
+
+/* 深色：暖黑。JS 会在 <head> 里立刻写好 data-theme，不会闪白。 */
+:root[data-theme="dark"]{
+  --paper:#17140F;
+  --paper-2:#1F1B15;
+  --ink:#EDE7DB;
+  --ink-soft:#B4A996;
+  --ink-faint:#948A78;
+  --rule:#332C22;
+  --rule-soft:#282218;
+  --accent:#E0714F;
+  --accent-soft:rgba(224,113,79,.34);
+  --topbar:rgba(23,20,15,.84);
+  --noise-opacity:.09;
+  --shadow:0 1px 2px rgba(0,0,0,.45);
+}
+/* 关掉 JS 时的兜底：跟随系统。与上面那段必须保持一致。 */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme]){
+    --paper:#17140F;
+    --paper-2:#1F1B15;
+    --ink:#EDE7DB;
+    --ink-soft:#B4A996;
+    --ink-faint:#948A78;
+    --rule:#332C22;
+    --rule-soft:#282218;
+    --accent:#E0714F;
+    --accent-soft:rgba(224,113,79,.34);
+    --topbar:rgba(23,20,15,.84);
+    --noise-opacity:.09;
+    --shadow:0 1px 2px rgba(0,0,0,.45);
+  }
+}
+
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){color-scheme:dark}}
 body{
   background:var(--paper);
   color:var(--ink);
@@ -26,22 +99,26 @@ body{
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
   line-height:1.6;
+  transition:background-color .4s var(--ease),color .4s var(--ease);
 }
 /* 纸纹 */
 body::before{
-  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.35;
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:var(--noise-opacity);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
   mix-blend-mode:multiply;
 }
+:root[data-theme="dark"] body::before{mix-blend-mode:screen;filter:invert(1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme]) body::before{mix-blend-mode:screen;filter:invert(1)}}
+
 img{max-width:100%;height:auto}
 a{color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,5vw,56px);position:relative;z-index:2}
+.wrap{max-width:var(--wrap-max);margin:0 auto;padding:0 var(--wrap-pad);position:relative;z-index:2}
 
 /* ---------- 2. 顶栏与进度条 ---------- */
 .progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:70;width:0}
 .topbar{
   position:fixed;top:0;left:0;right:0;z-index:60;
-  background:rgba(250,247,242,.86);
+  background:var(--topbar);
   backdrop-filter:blur(14px) saturate(1.4);
   border-bottom:1px solid var(--rule);
   transform:translateY(-100%);
@@ -49,7 +126,7 @@ a{color:inherit}
 }
 .topbar.show{transform:translateY(0)}
 .topbar-in{
-  max-width:1180px;margin:0 auto;padding:14px clamp(20px,5vw,56px);
+  max-width:var(--wrap-max);margin:0 auto;padding:12px var(--wrap-pad);
   display:flex;align-items:center;justify-content:space-between;gap:20px;
 }
 .brand{
@@ -64,6 +141,25 @@ a{color:inherit}
   transition:transform .45s var(--ease);
 }
 .topnav a:hover::after{transform:scaleX(1);transform-origin:left}
+
+/* v2：深浅色切换按钮。放在 .topnav 之外 —— 手机上 .topnav 是隐藏的，
+   按钮不能跟着一起消失。 */
+.themebtn{
+  flex:0 0 auto;appearance:none;background:none;border:1px solid var(--rule);
+  border-radius:100px;width:30px;height:30px;cursor:pointer;color:var(--ink-soft);
+  display:inline-flex;align-items:center;justify-content:center;padding:0;
+  transition:border-color .35s var(--ease),color .35s var(--ease),transform .35s var(--ease);
+}
+.themebtn:hover{border-color:var(--accent);color:var(--accent)}
+.themebtn:active{transform:scale(.92)}
+.themebtn svg{width:15px;height:15px;display:block}
+.themebtn .i-sun{display:none}
+:root[data-theme="dark"] .themebtn .i-sun{display:block}
+:root[data-theme="dark"] .themebtn .i-moon{display:none}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme]) .themebtn .i-sun{display:block}
+  :root:not([data-theme]) .themebtn .i-moon{display:none}
+}
 @media(max-width:720px){.topnav{display:none}}
 
 /* ---------- 3. 报头 ---------- */
@@ -96,23 +192,37 @@ a{color:inherit}
 .masthead.is-inner .kicker a{color:inherit;text-decoration:none}
 .masthead.is-inner .kicker a:hover{color:var(--accent)}
 
-/* ---------- 4. 主文章 ---------- */
+/* ---------- 4. 主文章（v2：边注栏 + 测量宽正文） ---------- */
 .feature{
-  display:grid;grid-template-columns:repeat(12,1fr);
-  gap:clamp(16px,2.4vw,28px);
+  display:grid;
+  grid-template-columns:var(--rail) minmax(0,1fr);
+  column-gap:var(--rail-gap);
   padding:clamp(30px,5vw,56px) 0 clamp(50px,8vw,96px);
 }
-.feature .meta{grid-column:1/3;position:sticky;top:88px;align-self:start}
-.feature .body{grid-column:4/11}
-.meta-list{font-size:11.5px;letter-spacing:.1em;color:var(--ink-faint);line-height:2}
-.meta-list b{display:block;color:var(--ink);font-weight:600;letter-spacing:.06em;font-size:12.5px;margin-bottom:2px}
-.meta-list .item{margin-bottom:20px}
+/* 元信息：贴住正文右对齐，形成「边注」 */
+.feature .meta{
+  grid-column:1;position:sticky;top:96px;align-self:start;
+  text-align:right;
+}
+.feature .body{grid-column:2;min-width:0}
+
+.meta-list{font-size:12px;letter-spacing:.08em;color:var(--ink-faint);line-height:1.9}
+.meta-list b{display:block;color:var(--ink);font-weight:600;letter-spacing:.06em;font-size:12.5px;margin-bottom:3px}
+.meta-list .item{margin-bottom:18px}
 .tag{
   display:inline-block;border:1px solid var(--rule);border-radius:100px;
-  padding:4px 11px;font-size:10.5px;letter-spacing:.1em;color:var(--ink-soft);margin:0 6px 6px 0;
+  padding:4px 11px;font-size:11px;letter-spacing:.1em;color:var(--ink-soft);margin:0 0 6px 6px;
   text-decoration:none;
+  transition:border-color .35s var(--ease),color .35s var(--ease);
 }
 .tag:hover{border-color:var(--accent);color:var(--accent)}
+
+/* 正文测量宽：标题 / 导语 / 段落共用同一条右边界，
+   图片默认也在同一边界内；.wide / .full 才出血。 */
+.feature .body > h2,
+.feature .body > .standfirst,
+.feature .prose > *{max-width:var(--measure)}
+
 .feature h2, .col h2{
   font-family:var(--serif);font-weight:600;
   font-size:clamp(30px,5.4vw,54px);line-height:1.12;letter-spacing:-.01em;
@@ -125,14 +235,31 @@ a{color:inherit}
   padding-bottom:26px;margin-bottom:30px;border-bottom:1px solid var(--rule);
 }
 
+/* v2：首页封面故事的「读全文」—— 做成一条发丝线底部的编辑式行 */
+.readmore{
+  max-width:var(--measure);margin-top:clamp(26px,3.6vw,40px);
+  padding-top:14px;border-top:1px solid var(--rule);
+  display:flex;align-items:baseline;justify-content:space-between;gap:18px;
+}
+.readmore a{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+  font-size:13px;letter-spacing:.14em;color:var(--accent);
+  transition:gap .4s var(--ease);
+}
+.readmore a:hover{gap:16px}
+.readmore a span:first-child{border-bottom:1px solid var(--accent-soft);padding-bottom:3px}
+.readmore .rcount{font-size:12px;letter-spacing:.1em;color:var(--ink-faint);white-space:nowrap}
+
 /* ---------- 5. 正文 ---------- */
 .prose{
   font-family:var(--serif);
   font-size:clamp(16.5px,1.85vw,19.5px);
-  line-height:2.05;color:#252118;
+  line-height:1.9;                 /* v2：原 2.05，中文衬线太松 */
+  letter-spacing:.01em;            /* v2：中文补一点字距 */
+  color:var(--ink);
 }
 .prose p{margin-bottom:1.35em}
-.prose a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(192,64,44,.3)}
+.prose a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)}
 .prose a:hover{border-bottom-color:var(--accent)}
 .prose h2,.prose h3,.prose h4{
   font-family:var(--serif);font-weight:600;line-height:1.3;
@@ -158,72 +285,99 @@ a{color:inherit}
 .prose pre code{background:none;padding:0;font-size:.82em}
 .prose hr{border:0;border-top:1px solid var(--rule);margin:2.4em 0}
 .prose img{display:block;width:100%;margin:0}
-/* 首字下沉 */
+/* 首字下沉（v2：对齐首行基线，原来偏高） */
 .prose.drop > p:first-of-type::first-letter{
-  float:left;font-size:4.1em;line-height:.82;padding:.06em .12em 0 0;
+  float:left;font-size:3.9em;line-height:.78;padding:.1em .14em 0 0;
   font-weight:600;color:var(--accent);
 }
 
-/* 图注 */
+/* 图注 / 正文插图 */
 .prose .cap-fig{margin:clamp(30px,5vw,52px) 0}
 .prose .cap-fig img{
-  display:block;width:100%;filter:grayscale(.18) contrast(1.03);
-  transition:filter 1s var(--ease);
+  display:block;width:100%;
+  /* v2：删掉了 grayscale(.18)。手机没有 hover，那等于照片永远发灰。 */
 }
-.prose .cap-fig:hover img{filter:grayscale(0) contrast(1)}
 .prose .cap-fig figcaption{
-  font-size:11.5px;letter-spacing:.08em;color:var(--ink-faint);
+  font-size:12px;letter-spacing:.07em;color:var(--ink-faint);
   margin-top:12px;padding-top:10px;border-top:1px solid var(--rule);
   display:flex;justify-content:space-between;gap:14px;
   font-family:var(--sans);
 }
-/* 没有图注时也要有线 */
 .prose .cap-fig figcaption:empty{display:none}
-.prose .cap-fig img + figcaption:empty + *{margin-top:0}
+
+/* v2：图片出血档位
+   .wide —— 占满整个正文栏（吃掉右侧外白边）  .full —— 顶到浏览器两边
+   .small —— 缩到 28rem，做小插图
+   用法：{{< figure src="…" class="wide" caption="…" >}} */
+.prose .cap-fig.wide,
+.feature .body > .cap-fig.wide{max-width:none}
+.prose .cap-fig.full,
+.feature .body > .cap-fig.full{
+  max-width:none;
+  margin-left:calc(-1 * (var(--wrap-center) + var(--wrap-pad) + var(--rail) + var(--rail-gap)));
+  margin-right:calc(-1 * (var(--wrap-center) + var(--wrap-pad)));
+}
+.prose .cap-fig.small,
+.feature .body > .cap-fig.small{max-width:28rem}
+.prose .cap-fig.full figcaption,
+.prose .cap-fig.wide figcaption{
+  max-width:var(--measure);
+}
 
 /* ---------- 6. 引文 ---------- */
-.pull-wrap{display:grid;grid-template-columns:repeat(12,1fr);gap:clamp(16px,2.4vw,28px)}
+.pull-wrap{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);column-gap:var(--rail-gap)}
 .pull{
-  grid-column:3/11;font-family:var(--serif);font-style:italic;
+  grid-column:1/-1;
+  font-family:var(--serif);font-style:italic;
   font-size:clamp(21px,3.1vw,34px);line-height:1.5;color:var(--ink);
   padding:clamp(26px,4vw,44px) 0;margin:clamp(26px,4vw,44px) 0;
-  border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
   text-align:center;
+  max-width:44rem;margin-left:auto;margin-right:auto;
 }
 .pull span{color:var(--accent)}
 
-/* ---------- 7. 胶片条 ---------- */
+/* ---------- 7. 胶片条（v2：通栏出血 + 原始画幅） ---------- */
+/* 这一条放在 .wrap 之外（见 layouts/index.html），所以本身就是通栏块。
+   里面的 .strip-wrap 再按 .wrap 的宽度与内边距对齐 ——
+   比用 100vw 去算居中偏移可靠（带滚动条时 100vw 会多出十几像素）。 */
 .filmstrip{
+  position:relative;z-index:2;
   padding:clamp(40px,7vw,84px) 0;
-  border-top:1px solid var(--ink);border-bottom:1px solid var(--rule);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
   background:var(--paper-2);
 }
+.strip-wrap{max-width:var(--wrap-max);margin:0 auto;padding:0 var(--wrap-pad)}
 .strip-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:26px;gap:20px;flex-wrap:wrap}
 .strip-head h3{font-family:var(--serif);font-size:clamp(20px,2.6vw,28px);font-weight:600;letter-spacing:.01em}
 .strip-head span{font-size:11.5px;letter-spacing:.16em;color:var(--ink-faint)}
 .strip{
-  display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
+  display:flex;align-items:flex-start;gap:16px;overflow-x:auto;
+  scroll-snap-type:x proximity;
   padding-bottom:16px;scrollbar-width:thin;-webkit-overflow-scrolling:touch;
+  /* 让第一/最后一帧能滚到与正文同一条边 */
+  scroll-padding-inline:0;
 }
 .strip::-webkit-scrollbar{height:4px}
-.strip::-webkit-scrollbar-thumb{background:var(--rule)}
-.frame{flex:0 0 clamp(210px,30vw,300px);scroll-snap-align:start}
+.strip::-webkit-scrollbar-thumb{background:var(--rule);border-radius:2px}
+.frame{flex:0 0 auto;scroll-snap-align:start}
 .frame img{
-  width:100%;aspect-ratio:3/4;object-fit:cover;
-  filter:grayscale(.55) contrast(1.06);
-  transition:filter .8s var(--ease),transform .8s var(--ease);
+  display:block;
+  /* v2：统一高度、宽度按原始画幅走 —— 原来的 3:4 + object-fit:cover
+     会把横幅照片裁掉大半（出生照、走廊照都被裁废了）。 */
+  height:clamp(220px,30vw,330px);width:auto;max-width:none;
+  /* v2：不再去色 */
 }
-.frame:hover img{filter:grayscale(0);transform:scale(1.015)}
-.frame p{font-size:11px;letter-spacing:.08em;color:var(--ink-faint);margin-top:9px}
-.frame p b{color:var(--ink);font-weight:600;font-family:var(--serif);font-size:12.5px}
+.frame p{font-size:11.5px;letter-spacing:.07em;color:var(--ink-faint);margin-top:10px;line-height:1.6}
+.frame p b{color:var(--ink);font-weight:600;font-family:var(--serif);font-size:13px}
 
 /* ---------- 8. 往期存档 ---------- */
 .archive{padding:clamp(50px,9vw,110px) 0}
 .archive h3{font-family:var(--serif);font-size:clamp(22px,3vw,34px);font-weight:600;margin-bottom:8px}
-.archive .sub{font-size:12px;letter-spacing:.14em;color:var(--ink-faint);margin-bottom:40px}
+.archive .sub{font-size:12.5px;letter-spacing:.14em;color:var(--ink-faint);margin-bottom:40px}
 .row{
-  display:grid;grid-template-columns:64px 130px 1fr 40px;gap:20px;align-items:center;
-  padding:26px 4px;border-top:1px solid var(--rule);
+  display:grid;grid-template-columns:56px 118px 1fr 34px;gap:20px;align-items:center;
+  padding:22px 4px;border-top:1px solid var(--rule);
   text-decoration:none;color:inherit;position:relative;
   transition:padding .5s var(--ease);
 }
@@ -235,9 +389,9 @@ a{color:inherit}
 .row:hover::after{transform:scaleX(1)}
 .row:hover{padding-left:16px}
 .row .num{font-family:var(--serif);font-size:13px;color:var(--accent);letter-spacing:.06em}
-.row .date{font-size:12px;letter-spacing:.1em;color:var(--ink-faint)}
+.row .date{font-size:12.5px;letter-spacing:.08em;color:var(--ink-faint)}
 .row .ttl{font-family:var(--serif);font-size:clamp(17px,2.1vw,24px);font-weight:600;letter-spacing:-.005em;line-height:1.35}
-.row .arrow{font-size:20px;color:var(--ink-faint);transition:transform .5s var(--ease),color .5s}
+.row .arrow{font-size:19px;color:var(--ink-faint);transition:transform .5s var(--ease),color .5s}
 .row:hover .arrow{transform:translateX(8px);color:var(--accent)}
 .row.is-new .ttl::after{
   content:"新";display:inline-block;margin-left:12px;vertical-align:middle;
@@ -265,7 +419,7 @@ a{color:inherit}
   transition:transform .5s var(--ease);
 }
 .pager a:hover{transform:translateX(var(--dir,6px))}
-.pager .plabel{font-size:11px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase}
+.pager .plabel{font-size:11.5px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase}
 .pager .ptitle{font-family:var(--serif);font-size:clamp(16px,2vw,21px);font-weight:600;line-height:1.4}
 .pager .next{text-align:right;--dir:-6px}
 .pager a:hover .ptitle{color:var(--accent)}
@@ -280,7 +434,7 @@ footer{
 .foot .sign{font-family:var(--serif);font-size:clamp(20px,3vw,30px);font-weight:600;line-height:1.3}
 .foot .sign a{text-decoration:none;border-bottom:1px solid transparent;transition:border-color .4s}
 .foot .sign a:hover{border-bottom-color:var(--accent)}
-.foot .note{font-size:11.5px;letter-spacing:.1em;color:var(--ink-faint);line-height:2;text-align:right}
+.foot .note{font-size:12px;letter-spacing:.1em;color:var(--ink-faint);line-height:2;text-align:right}
 @media(max-width:640px){.foot .note{text-align:left}}
 
 /* ---------- 11. 入场动画 ---------- */
@@ -296,22 +450,56 @@ footer{
 }
 
 /* ---------- 12. 响应式 ---------- */
-@media(max-width:720px){
-  .feature .meta{grid-column:1/-1;position:static;margin-bottom:6px}
-  .feature .body{grid-column:1/-1}
+/* 中等屏（901~1080px）：边注栏收窄，正文测量宽也跟着收一点 */
+@media(max-width:1080px){
+  :root{--rail:clamp(104px,10vw,124px);--rail-gap:clamp(22px,3vw,36px);--measure:38rem}
+}
+/* v2：900px 以下不再用边注栏 —— 窄屏上边注栏只能挤到 70~90px，
+   「爸爸（胖虎）」和标签会折行成「爸爸（胖 / 虎）」。
+   改成单栏：正文在前、元信息压成一行跟在后面。
+   原来元信息排在标题之前，手机上要先滚 350px 才看见文章标题。 */
+@media(max-width:900px){
+  .feature{grid-template-columns:minmax(0,1fr);row-gap:0}
+  .feature .body{grid-column:1;grid-row:1}
+  .feature .body > h2,
+  .feature .body > .standfirst,
+  .feature .prose > *,
+  .prose .cap-fig.wide,
+  .prose .cap-fig.small{max-width:none}
+  .feature .meta{
+    grid-column:1;grid-row:2;position:static;text-align:left;
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px;
+    border-top:1px solid var(--rule);margin-top:clamp(30px,7vw,46px);padding-top:16px;
+  }
+  .meta-list{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}
+  .meta-list .item{margin:0}
+  .meta-list b{display:inline;margin:0 6px 0 0;font-size:12px}
+  .feature .meta > div:last-child{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{margin:0}
   .pull{grid-column:1/-1}
-  .row{grid-template-columns:44px 1fr 24px;gap:12px}
+  .pull-wrap{grid-template-columns:minmax(0,1fr)}
+  /* 窄屏上 .full 出血只抵掉 .wrap 内边距即可 */
+  .prose .cap-fig.full{
+    margin-left:calc(-1 * var(--wrap-pad));
+    margin-right:calc(-1 * var(--wrap-pad));
+  }
+}
+/* 手机：存档行换成两行布局（日期挪到标题下面） */
+@media(max-width:720px){
+  .row{grid-template-columns:40px 1fr 24px;gap:12px}
   .row .date{display:none}
 }
 
 /* ---------- 13. 图片管线补丁 ----------
-   图片现在由 partials/capsule-img.html 输出 <picture> + WebP + srcset。
+   图片由 partials/capsule-img.html 输出 <picture> + WebP + srcset。
    <picture> 默认是 inline，会让块的 <img> 周围多出几像素的行内间隙，
    所以统一按块级元素处理。
    另外：手机端原来把 .row 的日期整列藏掉了，看起来像一格空白，
    这里改成日期换到标题下面一行显示。 */
 picture{display:block}
 .strip picture,.frame picture,.prose .cap-fig picture{display:block;width:100%}
+/* 胶片条按原始画幅，宽度交给 <img> 决定，别让 <picture> 撑满 */
+.frame picture{width:auto}
 
 @media(max-width:720px){
   .row{grid-template-columns:38px 1fr 20px;column-gap:12px;row-gap:3px;align-items:baseline}
