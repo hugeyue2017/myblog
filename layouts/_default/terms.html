@@ -1,27 +1,35 @@
-{{- define "main" }}
+{{- /* ==========================================================
+   terms.html — 标签 / 分类总览页
+   ========================================================== */ -}}
+{{ define "main" }}
+{{- $t := .Title -}}
+{{- if eq $t "Tags" }}{{ $t = "全部标签" }}{{ end -}}
+{{- if eq $t "Categories" }}{{ $t = "全部分类" }}{{ end -}}
+<div class="wrap">
 
-{{- if .Title }}
-<header class="page-header">
-    <h1>{{ .Title }}</h1>
-    {{- if .Description }}
-    <div class="post-description">
-        {{ .Description }}
+  <section class="masthead is-inner">
+    <div class="kicker rv">Index</div>
+    <h1 class="rv d1">{{ $t }}</h1>
+    <div class="mast-rule rv d2">
+      <span>共 {{ len .Pages }} 个</span>
+      <span class="sep">/</span>
+      <span>按名称排序</span>
+      <span class="grow"></span>
+      <span><a href="{{ .Site.Home.RelPermalink }}">回到封面</a></span>
     </div>
-    {{- end }}
-</header>
-{{- end }}
+  </section>
 
-<ul class="terms-tags">
-    {{- $type := .Type }}
-    {{- range $key, $value := .Data.Terms.Alphabetical }}
-    {{- $name := .Name }}
-    {{- $count := .Count }}
-    {{- with site.GetPage (printf "/%s/%s" $type $name) }}
-    <li>
-        <a href="{{ .Permalink }}">{{ .Name }} <sup><strong><sup>{{ $count }}</sup></strong></sup> </a>
-    </li>
+  <section class="archive" style="padding-top:clamp(24px,4vw,40px)">
+    {{- if .Pages }}
+    <div class="tagcloud rv">
+      {{- range .Pages.ByTitle }}
+      <a class="tag" href="{{ .RelPermalink }}">{{ .Title }}<b>{{ len .Pages }}</b></a>
+      {{- end }}
+    </div>
+    {{- else }}
+    <p class="empty-note">还没有标签。</p>
     {{- end }}
-    {{- end }}
-</ul>
+  </section>
 
-{{- end }}{{/* end main */ -}}
+</div>
+{{ end }}

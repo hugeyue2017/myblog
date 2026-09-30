@@ -1,72 +1,101 @@
-{{- /* 首页：纵向时间轴
-       只覆盖 home（Hugo 查找顺序里 layouts/index.html 优先于
-       layouts/_default/list.html），section / 标签列表页仍走主题原模板。 */ -}}
-{{- define "main" }}
+{{- /* ==========================================================
+   index.html — 首页「本期」：封面故事 + 胶片条 + 全部存档
+   ========================================================== */ -}}
+{{ define "main" }}
+{{- $t1 := site.Params.capsuleTitle1 | default "宝贝的" -}}
+{{- $t2 := site.Params.capsuleTitle2 | default "时间胶囊" -}}
+{{- /* 只取「文章」列表（mainSections = posts）。
+       注意别改回 .Site.RegularPages —— 那样 about / archives 这类单页
+       也会被算进来，它们没有日期，会显示成 0001 / 01 / 01 的空记录。 */ -}}
+{{- $main := site.Params.mainSections | default (slice "posts") -}}
+{{- $pages := (where .Site.RegularPages "Type" "in" $main).ByDate.Reverse -}}
 
-{{- $pages := where site.RegularPages "Type" "in" site.Params.mainSections }}
-{{- $pages = where $pages "Params.hiddenInHomeList" "!=" "true" }}
-{{- $paginator := .Paginate $pages }}
+{{ with $pages }}
+{{- $latest := index . 0 -}}
+{{- $total := len $pages -}}
 
-<section class="hero reveal">
-  <p class="hero-kicker">minipiggy · 时间胶囊</p>
-  <h1 class="hero-title">{{ site.Title }}</h1>
-  {{- with site.Params.description }}
-  <p class="hero-lead">{{ . }}</p>
-  {{- end }}
-</section>
+<div class="wrap">
 
-{{- if .Content }}
-<div class="post-content">{{ .Content }}</div>
-{{- end }}
-
-<ol class="timeline">
-  {{- range $paginator.Pages }}
-  {{- $post := . }}
-  {{- /* 缩略图：取文章的 images 第一项，从 assets/ 里找 */ -}}
-  {{- $thumb := "" }}
-  {{- with $post.Params.images }}
-    {{- with resources.Get (strings.TrimPrefix "/" (index . 0)) }}
-      {{- if gt .Width 900 -}}
-        {{- $thumb = .Resize "900x q82 Lanczos" -}}
-      {{- else -}}
-        {{- /* 不直接用原图 —— 原图会连 EXIF（含 GPS）一起发出去 */ -}}
-        {{- $thumb = .Process "jpeg q82" -}}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-
-  <li class="tl-item reveal">
-    <div class="tl-when">
-      <span class="tl-year">{{ $post.Date.Format "2006" }}</span>
-      <span class="tl-md">{{ $post.Date.Format "1月2日" }}</span>
+  {{- /* ---------- 报头 ---------- */}}
+  <section class="masthead">
+    <div class="kicker rv">Vol. {{ printf "%02d" $total }} &nbsp;·&nbsp; {{ $latest.Date.Format "2006 年 1 月" }}</div>
+    <h1 class="rv d1">{{ $t1 }}<br><em>{{ $t2 }}</em></h1>
+    <div class="mast-rule rv d2">
+      <span>{{ site.Params.capsuleDedication | default "写给未来的你" }}</span>
+      <span class="sep">/</span>
+      <span>{{ site.Params.capsuleHost | default "爸爸 · 胖虎 主持" }}</span>
+      <span class="grow"></span>
+      <span>{{ $latest.Date.Format "2006 年 1 月 2 日" }}</span>
     </div>
-    <span class="tl-node" aria-hidden="true"></span>
-    <article class="tl-body">
-      <h2 class="tl-title"><a href="{{ $post.Permalink }}">{{ $post.Title }}</a></h2>
-      <p class="tl-sum">{{ $post.Summary | plainify | htmlUnescape }}{{ if $post.Truncated }}…{{ end }}</p>
-      {{- with $thumb }}
-      <a class="tl-thumb{{ if gt .Height .Width }} tl-thumb--portrait{{ end }}"
-         href="{{ $post.Permalink }}" tabindex="-1" aria-hidden="true">
-        <img src="{{ .RelPermalink }}" width="{{ .Width }}" height="{{ .Height }}"
-             alt="" loading="lazy" decoding="async">
-      </a>
+  </section>
+
+  {{- /* ---------- 封面故事 ---------- */}}
+  <section class="feature" id="feature">
+    <aside class="meta rv">
+      <div class="meta-list">
+        <div class="item"><b>日期</b>{{ $latest.Date.Format "2006.01.02" }}</div>
+        <div class="item"><b>分类</b>{{ with $latest.Params.categories }}{{ delimit . " / " }}{{ else }}成长记录{{ end }}</div>
+        <div class="item"><b>作者</b>{{ $latest.Params.author | default (site.Params.capsuleHost | default "爸爸（胖虎）") }}</div>
+      </div>
+      <div>
+        {{- range $latest.Params.tags }}
+        <a class="tag" href="{{ printf `tags/%s/` (. | urlize) | relURL }}">{{ . }}</a>
+        {{- end }}
+      </div>
+    </aside>
+
+    <div class="body">
+      <h2 class="rv d1"><a href="{{ $latest.RelPermalink }}">{{ $latest.Title }}</a></h2>
+      <p class="standfirst rv d2">{{ $latest.Params.summary | default ($latest.Summary | plainify | truncate 90) }}</p>
+      <div class="prose drop rv d3">{{ $latest.Content }}</div>
+    </div>
+  </section>
+
+  {{- /* ---------- 引文 ---------- */}}
+  {{ with (site.Params.capsulePull | default "「愿你健康，愿你平安，<br>愿你慢慢、<span>慢慢地</span>长大。」") }}
+  <div class="pull-wrap">
+    <blockquote class="pull rv">{{ . | safeHTML }}</blockquote>
+  </div>
+  {{ end }}
+
+  {{- /* ---------- 胶片条 ---------- */}}
+  {{ with site.Data.filmstrip }}
+  <section class="filmstrip" id="strip">
+    <div class="strip-head">
+      <h3>{{ site.Params.capsuleFilmTitle | default "最近的胶片" }}</h3>
+      <span>SCROLL →</span>
+    </div>
+    <div class="strip">
+      {{- range . }}
+      <div class="frame">
+        {{- /* 走图片管线：重新编码（抹掉 EXIF/GPS）+ WebP + srcset */ -}}
+        {{- partial "capsule-img.html" (dict
+              "src" .img
+              "alt" .title
+              "sizes" "(max-width:720px) 62vw, 300px"
+              "max" 760) -}}
+        <p><b>{{ .title }}</b>{{ with .note }}<br>{{ . }}{{ end }}</p>
+      </div>
       {{- end }}
-    </article>
-  </li>
-  {{- end }}
-</ol>
+    </div>
+  </section>
+  {{ end }}
 
-{{- if gt $paginator.TotalPages 1 }}
-<footer class="page-footer">
-  <nav class="pagination">
-    {{- if $paginator.HasPrev }}
-    <a class="prev" href="{{ $paginator.Prev.URL | absURL }}">«&nbsp;更新的记录</a>
+  {{- /* ---------- 存档 ---------- */}}
+  <section class="archive" id="archive">
+    <h3>存档</h3>
+    <p class="sub">共 {{ $total }} 篇 · 按时间倒序</p>
+    {{- range $i, $p := $pages }}
+    {{- $n := sub $total $i }}
+    <a class="row rv{{ if eq $i 0 }} is-new{{ end }}" href="{{ $p.RelPermalink }}">
+      <span class="num">{{ printf "%02d" $n }}</span>
+      <span class="date">{{ $p.Date.Format "2006 / 01 / 02" }}</span>
+      <span class="ttl">{{ $p.Title }}</span>
+      <span class="arrow">→</span>
+    </a>
     {{- end }}
-    {{- if $paginator.HasNext }}
-    <a class="next" href="{{ $paginator.Next.URL | absURL }}">更早的记录&nbsp;»</a>
-    {{- end }}
-  </nav>
-</footer>
-{{- end }}
+  </section>
 
-{{- end }}{{- /* end main */ -}}
+</div>
+{{ end }}
+{{ end }}

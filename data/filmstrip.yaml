@@ -1,0 +1,27 @@
+# 首页「胶片条」的照片清单
+# 想换图：把新照片放进 static/images/，改下面的文件名即可。
+# 张数随意增减，版式会自动适应。
+
+- img: /images/film-01.jpg
+  title: 打哈欠
+  note: 绿色的玩偶比你还大
+
+- img: /images/film-02.jpg
+  title: 举手投降
+  note: 睡姿第一名
+
+- img: /images/film-03.jpg
+  title: 趴在爸爸胸口
+  note: 你的专属床垫
+
+- img: /images/film-04.jpg
+  title: 妈妈和你
+  note: 凌晨两点半的并排睡
+
+- img: /images/film-05.jpg
+  title: 凌晨 01:47
+  note: 走廊里的第 N 圈
+
+- img: /images/film-06.jpg
+  title: 一人一半
+  note: 整张床都是你的
