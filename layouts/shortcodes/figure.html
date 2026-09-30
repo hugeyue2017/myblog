@@ -1,80 +1,35 @@
 {{- /* ───────────────────────────────────────────────────────────────────────────
-   带图注的图片：figure + figcaption
-   覆盖主题原版。
+   带图注的图片：{{< figure src="images/x.jpg" alt="…" caption="描述 | 2026.09.28" >}}
 
-   为什么必须覆盖：主题原版是直接 <img src="{{ .Get "src" }}">，
-   而 Markdown 里的 ![]() 走的是 render-image 钩子 —— 只有钩子会把图片
-   重新编码、抹掉 EXIF、生成 WebP 与四档 srcset。
-   用主题原版写 figure，等于绕过整条流水线：
-   访客下的是原图，而且原图的 GPS / 拍摄时间会一起发出去。
+   ⚠️ 这个文件必须保留，不要删。
+   主题原版的 figure 是直接 <img src="{{ .Get "src" }}"> —— 裸输出，
+   会把 assets/ 里的原图连同 EXIF（拍摄时间、机型、GPS 定位）一起发给访客，
+   而且没有压缩、没有 WebP、没有响应式。
+   这里改成和正文 ![]() 完全同一条通道：partials/capsule-img.html。
 
-   所以这里复用同一套逻辑：多档 srcset + WebP + 绝不外发原图。
+   图注支持用竖线分两栏：caption="满月当天 | 2026.09.28"
    ─────────────────────────────────────────────────────────────────────────── */ -}}
 
 {{- $src := .Get "src" -}}
-{{- $alt := .Get "alt" | default (.Get "caption") | default "" -}}
 {{- $caption := .Get "caption" -}}
-
-{{- $u := urls.Parse $src -}}
-{{- $img := "" -}}
-{{- if not $u.IsAbs -}}
-  {{- $clean := strings.TrimPrefix "/" (strings.TrimPrefix "./" $u.Path) -}}
-  {{- $img = or (.Page.Resources.Get $clean) (resources.Get $clean) -}}
-{{- end -}}
-
+{{- $alt := .Get "alt" | default $caption | default "" -}}
 {{- $class := .Get "class" -}}
-{{- if eq (.Get "align") "center" -}}{{- $class = printf "align-center %s" $class -}}{{- end -}}
+{{- if eq (.Get "align") "center" -}}{{- $class = strings.TrimSpace (printf "align-center %s" (or $class "")) -}}{{- end -}}
+{{- $parts := slice -}}
+{{- with $caption }}{{ $parts = split . "|" }}{{ end -}}
 
-<figure{{ with $class }} class="{{ . }}"{{ end }}>
-  {{- if $img -}}
-
-    {{- $widths := slice 480 800 1200 1800 -}}
-    {{- $maxW := $img.Width -}}
-    {{- $jpgSet := slice -}}
-    {{- $webpSet := slice -}}
-    {{- $srcURL := "" -}}
-
-    {{- range $widths -}}
-      {{- if le . $maxW -}}
-        {{- $w := . -}}
-        {{- $r := $img.Resize (printf "%dx q86 Lanczos" $w) -}}
-        {{- $jpgSet = $jpgSet | append (printf "%s %dw" $r.RelPermalink $w) -}}
-        {{- $srcURL = $r.RelPermalink -}}
-        {{- if hugo.IsExtended -}}
-          {{- $webpSet = $webpSet | append (printf "%s %dw" ($img.Resize (printf "%dx webp q80 Lanczos" $w)).RelPermalink $w) -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- /* 走不到 480 档的小图（截图 / 裁剪图）单独重新编码一份，
-           确保发出去的文件一定不带元数据 */ -}}
-    {{- if not $jpgSet -}}
-      {{- $r := $img.Process "jpeg q86" -}}
-      {{- $jpgSet = $jpgSet | append (printf "%s %dw" $r.RelPermalink $maxW) -}}
-      {{- $srcURL = $r.RelPermalink -}}
-      {{- if hugo.IsExtended -}}
-        {{- $webpSet = $webpSet | append (printf "%s %dw" ($img.Process "webp q80").RelPermalink $maxW) -}}
-      {{- end -}}
-    {{- end -}}
-
-    <picture>
-      {{- if $webpSet }}
-      <source type="image/webp" srcset="{{ delimit $webpSet ", " }}" sizes="(min-width: 780px) 720px, 100vw">
-      {{- end }}
-      <img class="post-img" src="{{ $srcURL }}"
-        srcset="{{ delimit $jpgSet ", " }}" sizes="(min-width: 780px) 720px, 100vw"
-        width="{{ $img.Width }}" height="{{ $img.Height }}"
-        alt="{{ $alt }}" loading="lazy" decoding="async">
-    </picture>
-
-  {{- else -}}
-
-    {{- warnf "figure: 未在 assets/ 找到 %q（页面 %s）—— 原图请放到 assets/images/ 下" $src .Page.File.Path -}}
-    <img class="post-img" src="{{ $src | safeURL }}" alt="{{ $alt }}" loading="lazy" decoding="async">
-
-  {{- end -}}
-
-  {{- with $caption }}
-  <figcaption><p>{{ . | markdownify }}</p></figcaption>
-  {{- end }}
+<figure class="cap-fig{{ with $class }} {{ . }}{{ end }}">
+{{- partial "capsule-img.html" (dict
+      "src" $src
+      "alt" ($alt | plainify)
+      "sizes" "(max-width:720px) 92vw, 760px"
+      "max" 1600) -}}
+{{- with $caption }}
+<figcaption>
+<span>{{ index $parts 0 | strings.TrimSpace }}</span>
+{{- if gt (len $parts) 1 }}
+<span>{{ index $parts 1 | strings.TrimSpace }}</span>
+{{- end }}
+</figcaption>
+{{- end }}
 </figure>

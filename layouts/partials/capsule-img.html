@@ -1,0 +1,63 @@
+{{- /* ==========================================================
+   capsule-img.html — 全站图片统一出口（走 Hugo 图片流水线）
+   ----------------------------------------------------------
+   为什么要走这条管线：
+   1) 图片放在 assets/images/ 里，Hugo 会重新编码输出副本 —— 原图
+      里的 EXIF（拍摄时间、机型、GPS 定位）不会被打包进站点。
+      直接把图丢 static/ 的话，原图会被原样发布，EXIF 一起公开。
+   2) 自动出 WebP + 多档 srcset，手机不会去下桌面尺寸的大图。
+   3) 自动出 srcset/sizes，图不会在加载完成时跳一下。
+
+   参数（dict）：
+     src      图片路径，"/images/x.jpg" 或 "images/x.jpg"
+     alt      替代文字
+     sizes    sizes 属性，默认 100vw
+     loading  "lazy"（默认）/ "eager"（首屏大图建议 eager）
+     class    可选，加在 <img> 上
+     max      可选，输出最大宽度上限，默认 1600
+
+   找不到资源时降级成普通 <img>（不会让构建失败），
+   那种情况说明图没放进 assets/images/。
+   ========================================================== */ -}}
+{{- $src := .src -}}
+{{- $key := strings.TrimPrefix "/" $src -}}
+{{- $alt := .alt | default "" -}}
+{{- $sizes := .sizes | default "100vw" -}}
+{{- $loading := .loading | default "lazy" -}}
+{{- $class := .class | default "" -}}
+{{- $max := .max | default 1600 -}}
+{{- $res := resources.Get $key -}}
+{{- if and $res (eq $res.ResourceType "image") -}}
+  {{- $native := $res.Width -}}
+  {{- $all := slice 480 760 1100 1600 -}}
+  {{- $setJ := slice -}}
+  {{- $setW := slice -}}
+  {{- $fallback := "" -}}
+  {{- range $all -}}
+    {{- if and (ge $native .) (le . $max) -}}
+      {{- $r := $res.Resize (printf "%dx q84 Lanczos" .) -}}
+      {{- $setJ = $setJ | append (printf "%s %dw" $r.RelPermalink .) -}}
+      {{- if hugo.IsExtended -}}
+        {{- $setW = $setW | append (printf "%s %dw" ($r.Process "webp q80").RelPermalink .) -}}
+      {{- end -}}
+      {{- $fallback = $r.RelPermalink -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $fallback -}}
+    {{- /* 原图比最小档还小：直接输出原图副本（仍会重新编码，EXIF 一样干净） */ -}}
+    {{- $r := $res.Resize (printf "%dx q84 Lanczos" $native) -}}
+    {{- $setJ = slice (printf "%s %dw" $r.RelPermalink $native) -}}
+    {{- if hugo.IsExtended -}}
+      {{- $setW = slice (printf "%s %dw" ($r.Process "webp q80").RelPermalink $native) -}}
+    {{- end -}}
+    {{- $fallback = $r.RelPermalink -}}
+  {{- end -}}
+<picture>
+{{- with $setW }}
+<source type="image/webp" srcset="{{ delimit . ", " }}" sizes="{{ $sizes }}">
+{{- end }}
+<img src="{{ $fallback }}" srcset="{{ delimit $setJ ", " }}" sizes="{{ $sizes }}" alt="{{ $alt }}" loading="{{ $loading }}" decoding="async"{{ with $class }} class="{{ . }}"{{ end }}>
+</picture>
+{{- else -}}
+<img src="{{ $key | relURL }}" alt="{{ $alt }}" loading="{{ $loading }}" decoding="async"{{ with $class }} class="{{ . }}"{{ end }}>
+{{- end -}}

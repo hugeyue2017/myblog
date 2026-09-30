@@ -1,65 +1,78 @@
-{{- define "main" }}
+{{- /* ==========================================================
+   single.html — 文章页
+   ========================================================== */ -}}
+{{ define "main" }}
+<div class="wrap">
 
-<article class="post-single">
-  <header class="post-header">
-    {{ partial "breadcrumbs.html" . }}
-    <h1 class="post-title entry-hint-parent">
-      {{ .Title }}
-      {{- if .Draft }}
-      <span class="entry-hint" title="Draft">
-        <svg xmlns="http://www.w3.org/2000/svg" height="35" viewBox="0 -960 960 960" fill="currentColor">
-          <path
-            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
-        </svg>
+  <section class="masthead is-inner">
+    <div class="kicker rv"><a href="{{ `posts/` | relURL }}">← 全部存档</a></div>
+    <h1 class="rv d1">{{ .Title }}</h1>
+    <div class="mast-rule rv d2">
+      <span>{{ .Date.Format "2006 年 1 月 2 日" }}</span>
+      <span class="sep">/</span>
+      <span>{{ .Params.author | default (site.Params.capsuleHost | default "爸爸（胖虎）") }}</span>
+      {{- with .Params.categories }}
+      <span class="sep">/</span>
+      <span>{{ delimit . " · " }}</span>
+      {{- end }}
+      <span class="grow"></span>
+      {{- with .Params.tags }}
+      <span>
+        {{- range $i, $t := . }}{{ if $i }} · {{ end }}<a href="{{ printf `tags/%s/` ($t | urlize) | relURL }}">{{ $t }}</a>{{ end -}}
       </span>
       {{- end }}
-    </h1>
-    {{- if .Description }}
-    <div class="post-description">
-      {{ .Description }}
     </div>
-    {{- end }}
-    {{- if not (.Param "hideMeta") }}
-    <div class="post-meta">
-      {{- partial "post_meta.html" . -}}
-      {{- partial "translation_list.html" . -}}
-      {{- partial "edit_post.html" . -}}
-      {{- partial "post_canonical.html" . -}}
-    </div>
-    {{- end }}
-  </header>
-  {{- $isHidden := (.Param "cover.hiddenInSingle") | default (.Param "cover.hidden") | default false }}
-  {{- partial "cover.html" (dict "cxt" . "IsSingle" true "isHidden" $isHidden) }}
-  {{- if (.Param "ShowToc") }}
-  {{- partial "toc.html" . }}
-  {{- end }}
+  </section>
 
-  {{- if .Content }}
-  <div class="post-content">
-    {{- if not (.Param "disableAnchoredHeadings") }}
-    {{- partial "anchored_headings.html" .Content -}}
-    {{- else }}{{ .Content }}{{ end }}
-  </div>
-  {{- end }}
+  <section class="feature">
+    <aside class="meta rv">
+      <div class="meta-list">
+        <div class="item"><b>日期</b>{{ .Date.Format "2006.01.02" }}</div>
+        <div class="item"><b>作者</b>{{ .Params.author | default "爸爸（胖虎）" }}</div>
+        {{- with .Params.categories }}
+        <div class="item"><b>分类</b>{{ delimit . " / " }}</div>
+        {{- end }}
+      </div>
+      <div>
+        {{- range .Params.tags }}
+        <a class="tag" href="{{ printf `tags/%s/` (. | urlize) | relURL }}">{{ . }}</a>
+        {{- end }}
+      </div>
+    </aside>
 
-  <footer class="post-footer">
-    {{- $tags := .Language.Params.Taxonomies.tag | default "tags" }}
-    <ul class="post-tags">
-      {{- range ($.GetTerms $tags) }}
-      <li><a href="{{ .Permalink }}">{{ .LinkTitle }}</a></li>
+    <div class="body">
+      {{- with .Params.summary }}
+      <p class="standfirst rv d1">{{ . }}</p>
       {{- end }}
-    </ul>
-    {{- if (.Param "ShowPostNavLinks") }}
-    {{- partial "post_nav_links.html" . }}
-    {{- end }}
-    {{- if (and site.Params.ShowShareButtons (ne .Params.disableShare true)) }}
-    {{- partial "share_icons.html" . -}}
-    {{- end }}
-  </footer>
+      <div class="prose drop rv d2">{{ .Content }}</div>
+    </div>
+  </section>
 
-  {{- if (.Param "comments") }}
-  {{- partial "comments.html" . }}
+  {{- $prev := .PrevInSection }}
+  {{- $next := .NextInSection }}
+  {{- if or $prev $next }}
+  <nav class="pager">
+    {{ with $prev }}
+    <a class="prev" href="{{ .RelPermalink }}">
+      <span class="plabel">← 上一篇</span>
+      <span class="ptitle">{{ .Title }}</span>
+    </a>
+    {{ end }}
+    {{ with $next }}
+    <a class="next" href="{{ .RelPermalink }}">
+      <span class="plabel">下一篇 →</span>
+      <span class="ptitle">{{ .Title }}</span>
+    </a>
+    {{ end }}
+  </nav>
   {{- end }}
-</article>
 
-{{- end }}{{/* end main */}}
+  <div class="pager" style="border-top:0;margin-top:0;padding-top:0">
+    <a class="prev" href="{{ `posts/` | relURL }}" style="flex:0 0 auto">
+      <span class="plabel">回到</span>
+      <span class="ptitle">全部存档</span>
+    </a>
+  </div>
+
+</div>
+{{ end }}
