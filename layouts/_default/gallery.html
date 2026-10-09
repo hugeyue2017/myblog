@@ -35,7 +35,7 @@
     <div class="mast-rule rv d2">
       <span>共 {{ $n }} 张</span>
       <span class="sep">/</span>
-      <span>左右滑动 · 方向键 · 点缩略图</span>
+      <span>自动播放 · 左右滑动 · 方向键</span>
       <span class="grow"></span>
       <span>{{ site.Params.capsuleHost | default "爸爸 · 胖虎 主持" }}</span>
     </div>
@@ -76,12 +76,20 @@
   <div class="gal-hud-wrap">
     <div class="gal-hud">
       <span class="gal-nav">
+        {{- /* 自动播放开关。进页面就开始播（照片自己往右走），
+               任何交互都会自动暂停，想接着看就点这里。
+               两个图标靠 .is-playing 切换，见 capsule.css 第 14 段。 */}}
+        <button class="gal-btn gal-btn-play" id="galPlay" type="button"
+                aria-label="暂停自动播放" title="自动播放">
+          <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.6 2.6 12.7 8l-8.1 5.4Z"/></svg>
+          <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.3 3h2.8v10H4.3Zm4.6 0h2.8v10H8.9Z"/></svg>
+        </button>
         <button class="gal-btn" id="galPrev" type="button" aria-label="上一张">←</button>
         <span class="gal-count"><b id="galNow">01</b> / {{ $n }}</span>
         <button class="gal-btn" id="galNext" type="button" aria-label="下一张">→</button>
       </span>
       <span class="gal-bar"><i id="galFill"></i></span>
-      <span class="gal-hint">拖动 · 滑动 · 方向键</span>
+      <span class="gal-hint" id="galHint">拖动 · 滑动 · 方向键</span>
     </div>
   </div>
 </section>

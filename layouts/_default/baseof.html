@@ -51,18 +51,19 @@
 {{- if $.IsPage }}<meta property="article:published_time" content="{{ .Format `2006-01-02T15:04:05-07:00` }}">{{ end }}
 {{- end }}
 {{- with .Params.tags }}{{ range . }}<meta property="article:tag" content="{{ . }}">{{ end }}{{ end }}
-{{- /* 浏览器地址栏 / 移动端状态栏配色，跟着深浅色走 */}}
-<meta name="theme-color" content="#FAF7F2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#17140F" media="(prefers-color-scheme: dark)">
+{{- /* 浏览器地址栏 / 移动端状态栏配色。跟着「实际在用的主题」走，不是系统偏好 ——
+       本站在系统深色下也是纸白，只有手动切过才变暖黑。这个 meta 由下面的脚本改写。 */}}
+<meta name="theme-color" content="#FAF7F2">
 {{- /* 深浅色：必须在样式表之前跑完，否则浅色会先闪一下再变深。
-       没写过选择就跟系统走；写过了就用存的。
-       这个脚本失败（关 JS）时 data-theme 不会有值，
-       capsule.css 里有一段 @media prefers-color-scheme 兜底。 */}}
+       **默认永远是浅色（纸白），不跟随系统偏好** —— 手机开着深色模式进来也还是纸白，
+       只有点顶栏那个按钮才会进深色，点过之后记住。
+       （2026-10-09 按用户要求改：「不要主动进夜间模式」。） */}}
 <script>
 (function(){try{
-  var t=localStorage.getItem('capsule-theme');
-  if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+  var t=localStorage.getItem('capsule-theme')==='dark'?'dark':'light';
   document.documentElement.setAttribute('data-theme',t);
+  var m=document.querySelector('meta[name="theme-color"]');
+  if(m){m.setAttribute('content',t==='dark'?'#17140F':'#FAF7F2');}
 }catch(e){}})();
 </script>
 <link rel="stylesheet" href="{{ `css/capsule.css` | relURL }}">
@@ -123,13 +124,16 @@
   }
   addEventListener('scroll',onScroll,{passive:true});onScroll();
 
-  /* 深浅色切换。默认值已经由 <head> 里的脚本写好，这里只管切换和记住。 */
+  /* 深浅色切换。默认值（浅色）已由 <head> 里的脚本写好 —— 本站不跟随系统偏好，
+     只有点这个按钮才会进深色。这里只管切换和记住。 */
   var btn=document.getElementById('themebtn');
   if(btn){
     btn.addEventListener('click',function(){
       var next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
       document.documentElement.setAttribute('data-theme',next);
       try{localStorage.setItem('capsule-theme',next)}catch(e){}
+      var m=document.querySelector('meta[name="theme-color"]');
+      if(m){m.setAttribute('content',next==='dark'?'#17140F':'#FAF7F2');}
     });
   }
 
@@ -217,11 +221,47 @@
     },{passive:true});
 
     var gprev=document.getElementById('galPrev'),gnext=document.getElementById('galNext');
-    if(gprev){gprev.addEventListener('click',function(){go(cur-1)})}
-    if(gnext){gnext.addEventListener('click',function(){go(cur+1)})}
+    if(gprev){gprev.addEventListener('click',function(){playAuto(false);go(cur-1)})}
+    if(gnext){gnext.addEventListener('click',function(){playAuto(false);go(cur+1)})}
     thumbs.forEach(function(t){
-      t.addEventListener('click',function(){go(parseInt(t.getAttribute('data-i'),10)||0)});
+      t.addEventListener('click',function(){playAuto(false);go(parseInt(t.getAttribute('data-i'),10)||0)});
     });
+
+    /* ---------- 自动播放 ----------
+       进页面就开始，照片自己往右走；**任何交互都立刻暂停** ——
+       滚轮 / 拖拽 / 手指碰 / 方向键 / 点缩略图 / 点左右按钮，都算。
+       想接着看就点 HUD 上那个播放按钮。走到末尾绕回第一张。
+
+       ⚠️ 别把「暂停」塞进 scroll 的监听里：自动播自己滚动也会触发 scroll，
+       那样会一播就停，表现为「完全不动」，很难查。 */
+    var AUTO_MS=4000;
+    var pbtn=document.getElementById('galPlay');
+    var hintEl=document.getElementById('galHint');
+    var autoId=0,playing=false;
+    function paintAuto(){
+      if(pbtn){
+        pbtn.classList.toggle('is-playing',playing);
+        pbtn.setAttribute('aria-label',playing?'暂停自动播放':'开始自动播放');
+      }
+      if(hintEl){hintEl.textContent=playing?'自动播放中 · 碰一下就暂停':'已暂停 · 点 ▷ 继续'}
+    }
+    function playAuto(on){
+      playing=on;
+      if(autoId){clearInterval(autoId);autoId=0}
+      if(playing){autoId=setInterval(autoTick,AUTO_MS)}
+      paintAuto();
+    }
+    function autoTick(){
+      if(!playing||document.hidden){return}
+      /* 画廊不在视口里就不推进 —— 否则用户在页面别处读东西时，
+         照片会在下面偷偷翻页，回头一看跳过去好几张。 */
+      var r=track.getBoundingClientRect();
+      if(r.bottom<80||r.top>innerHeight-80){return}
+      go(cur+1>=slides.length?0:cur+1);
+    }
+    if(pbtn){pbtn.addEventListener('click',function(){playAuto(!playing)})}
+    /* 系统开了「减少动态效果」的用户不自动播，按钮留给他自己点。 */
+    playAuto(!reduce);
 
     /* 方向键：只在画廊确实在视口里时才接管，不抢页面正常的翻页 */
     addEventListener('keydown',function(e){
@@ -229,6 +269,7 @@
       if(e.metaKey||e.ctrlKey||e.altKey||e.shiftKey){return}
       var r=track.getBoundingClientRect();
       if(r.bottom<120||r.top>innerHeight-120){return}
+      playAuto(false);
       go(cur+(e.key==='ArrowRight'?1:-1));
       e.preventDefault();
     });
@@ -241,6 +282,7 @@
       if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){return}
       var max=track.scrollWidth-track.clientWidth,d=e.deltaY;
       if(max<=0||(d>0&&track.scrollLeft>=max-1)||(d<0&&track.scrollLeft<=1)){return}
+      playAuto(false);
       track.style.scrollSnapType='none';
       track.scrollLeft+=d;
       e.preventDefault();
@@ -253,6 +295,7 @@
 
     /* 鼠标拖拽。触屏交给原生滑动，不接管。 */
     track.addEventListener('pointerdown',function(e){
+      playAuto(false);   /* 手一碰就停 —— 触屏和鼠标都算 */
       if(e.pointerType!=='mouse'||e.button!==0){return}
       dragging=true;moved=0;startX=e.clientX;startL=track.scrollLeft;
       track.classList.add('grab');track.style.scrollSnapType='none';

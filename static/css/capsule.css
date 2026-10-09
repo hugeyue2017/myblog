@@ -70,28 +70,14 @@
   --noise-opacity:.09;
   --shadow:0 1px 2px rgba(0,0,0,.45);
 }
-/* 关掉 JS 时的兜底：跟随系统。与上面那段必须保持一致。 */
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme]){
-    --paper:#17140F;
-    --paper-2:#1F1B15;
-    --ink:#EDE7DB;
-    --ink-soft:#B4A996;
-    --ink-faint:#948A78;
-    --rule:#332C22;
-    --rule-soft:#282218;
-    --accent:#E0714F;
-    --accent-soft:rgba(224,113,79,.34);
-    --topbar:rgba(23,20,15,.84);
-    --noise-opacity:.09;
-    --shadow:0 1px 2px rgba(0,0,0,.45);
-  }
-}
+/* 这里**故意没有**「跟随系统」的兜底段（2026-10-09 按用户要求删掉）。
+   本站默认永远是纸白：手机开着深色模式进来也还是纸白，只有点顶栏那个按钮才进暖黑。
+   关掉 JS 时 data-theme 不会被写上，:root{} 里那套浅色变量就是默认值 —— 正好。
+   ⚠️ 别再把 @media (prefers-color-scheme:dark) 加回来，那会让深色系统下自动变黑。 */
 
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
-@media (prefers-color-scheme:dark){:root:not([data-theme]){color-scheme:dark}}
 body{
   background:var(--paper);
   color:var(--ink);
@@ -108,7 +94,6 @@ body::before{
   mix-blend-mode:multiply;
 }
 :root[data-theme="dark"] body::before{mix-blend-mode:screen;filter:invert(1)}
-@media (prefers-color-scheme:dark){:root:not([data-theme]) body::before{mix-blend-mode:screen;filter:invert(1)}}
 
 img{max-width:100%;height:auto}
 a{color:inherit}
@@ -156,10 +141,6 @@ a{color:inherit}
 .themebtn .i-sun{display:none}
 :root[data-theme="dark"] .themebtn .i-sun{display:block}
 :root[data-theme="dark"] .themebtn .i-moon{display:none}
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme]) .themebtn .i-sun{display:block}
-  :root:not([data-theme]) .themebtn .i-moon{display:none}
-}
 @media(max-width:720px){.topnav{display:none}}
 
 /* ---------- 3. 报头 ---------- */
@@ -600,6 +581,13 @@ picture{display:block}
 }
 .gal-btn:hover{border-color:var(--accent);color:var(--accent)}
 .gal-btn:active{transform:scale(.92)}
+/* 自动播放开关：播着的时候显示暂停图标并染成强调色，停了显示三角。
+   图标用 SVG 而不是字符，避免各平台字形不一致。 */
+.gal-btn-play svg{width:12px;height:12px;display:block;fill:currentColor}
+.gal-btn-play .i-pause{display:none}
+.gal-btn-play.is-playing{border-color:var(--accent-soft);color:var(--accent)}
+.gal-btn-play.is-playing .i-play{display:none}
+.gal-btn-play.is-playing .i-pause{display:block}
 .gal-count{font-size:12px;letter-spacing:.14em;color:var(--ink-faint);white-space:nowrap}
 .gal-count b{font-family:var(--serif);font-weight:600;font-size:13px;color:var(--ink)}
 .gal-bar{position:relative;flex:1 1 auto;height:1px;background:var(--rule)}
