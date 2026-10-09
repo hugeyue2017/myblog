@@ -124,19 +124,32 @@
   <div class="strip-wrap">
     <div class="strip-head">
       <h3>{{ site.Params.capsuleFilmTitle | default "最近的胶片" }}</h3>
+      {{- /* 保持原版：右上角就是这一行提示，不加「全部影像」按钮。
+             胶片条本身就是入口 —— 点某一帧就落在影像页的那一张上。 */ -}}
       <span>SCROLL →</span>
     </div>
     <div class="strip">
-      {{- range . }}
-      <div class="frame">
+      {{- /* 每一帧都链到影像页里「同一张」照片上（/gallery/#pN）。
+             匹配顺序：先在 data/gallery.yaml 里按图片路径找，找不到再用这条
+             自己的 to 字段（同场景在相册里留了另一张取景的情况）。
+             两边都没匹配上时退化成 /gallery/ 首页 —— 宁可跳首页，也不要跳错张。
+             用 <a> 只是为了可点，类名仍是 .frame，样式走原版定义。 */ -}}
+      {{- $gal := site.Data.gallery -}}
+      {{- range $i, $p := . }}
+      {{- $anchor := 0 -}}
+      {{- $key := $p.to | default $p.img -}}
+      {{- range $j, $g := $gal -}}
+        {{- if eq $g.img $key -}}{{- $anchor = add $j 1 -}}{{- end -}}
+      {{- end -}}
+      <a class="frame" href="{{ `gallery/` | relURL }}{{ with $anchor }}#p{{ . }}{{ end }}" title="在影像页里看这张">
         {{- /* 走图片管线：重新编码（抹掉 EXIF/GPS）+ WebP + srcset */ -}}
         {{- partial "capsule-img.html" (dict
-              "src" .img
-              "alt" .title
+              "src" $p.img
+              "alt" $p.title
               "sizes" "(max-width:720px) 80vw, 460px"
               "max" 760) -}}
-        <p><b>{{ .title }}</b>{{ with .note }}<br>{{ . }}{{ end }}</p>
-      </div>
+        <p><b>{{ $p.title }}</b>{{ with $p.note }}<br>{{ . }}{{ end }}</p>
+      </a>
       {{- end }}
     </div>
   </div>
