@@ -508,3 +508,142 @@ picture{display:block}
   .row .date{display:block;grid-column:2;grid-row:2}
   .row .arrow{grid-column:3;grid-row:1/3;align-self:center}
 }
+
+/* ---------- 14. 影像页（/gallery/） ----------
+   首页「影像」胶片条点任意一张都会进到这里，并定位到那一张。
+
+   版式的关键：相纸托盘等高，宽度 = 内高 × 该张的画幅比。
+   比例由模板算好写在 --r 上（取自原图），所以每张照片都被托盘
+   严丝合缝地框住，横的竖的都不会剩一大片白边。
+   改 --gal-h 就能整体放大缩小；--gal-pad 是照片四周的纸边。 */
+.gal-intro{max-width:var(--measure);margin-bottom:clamp(28px,4.5vw,48px);color:var(--ink-soft)}
+
+.gal{
+  --gal-h:min(60vh,580px);
+  --gal-w:min(88vw,1040px);
+  --gal-pad:clamp(10px,1.5vw,18px);
+  position:relative;z-index:2;
+  padding:clamp(32px,5vw,60px) 0 clamp(24px,3.6vw,40px);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  background:var(--paper-2);
+}
+
+.gal-track{
+  display:flex;align-items:flex-start;
+  gap:clamp(18px,3vw,44px);
+  overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  padding:6px 0 14px;
+  cursor:grab;
+}
+.gal-track::-webkit-scrollbar{display:none}
+.gal-track.grab{cursor:grabbing}
+.gal-track:focus-visible{outline:2px solid var(--accent-soft);outline-offset:6px}
+
+.gal-slide{
+  flex:0 0 auto;
+  width:calc((var(--gal-h) - 2 * var(--gal-pad)) * var(--r,1) + 2 * var(--gal-pad));
+  max-width:var(--gal-w);
+  scroll-snap-align:center;scroll-snap-stop:always;
+  /* 不在中心的那几张压暗、微缩 —— 视线自然落在中间那张上 */
+  opacity:.4;transform:scale(.972);
+  transition:opacity .55s var(--ease),transform .55s var(--ease);
+}
+.gal-slide.on{opacity:1;transform:none}
+/* 首尾各留一段，让第一张能和正文对在同一条左边线上 */
+.gal-slide:first-child{margin-left:calc(var(--wrap-center) + var(--wrap-pad))}
+.gal-slide:last-child{margin-right:calc(var(--wrap-center) + var(--wrap-pad))}
+
+.gal-frame{
+  width:100%;height:var(--gal-h);
+  display:flex;align-items:center;justify-content:center;
+  padding:var(--gal-pad);
+  background:var(--paper);
+  border:1px solid var(--rule);border-radius:2px;
+  box-shadow:var(--shadow);
+}
+.gal-frame picture{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.gal-frame img{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain}
+
+.gal-cap{
+  display:flex;gap:14px;align-items:baseline;
+  margin-top:clamp(14px,2vw,20px);padding-top:13px;
+  border-top:1px solid var(--rule);
+}
+.gal-num{
+  flex:0 0 auto;font-family:var(--serif);font-size:12px;
+  letter-spacing:.14em;color:var(--accent);
+}
+.gal-txt{flex:1 1 auto;min-width:0}
+.gal-txt b{
+  display:block;font-family:var(--serif);font-weight:600;
+  font-size:clamp(17px,2.1vw,22px);line-height:1.3;letter-spacing:-.005em;
+}
+.gal-txt i{
+  display:block;font-style:normal;margin-top:6px;
+  font-size:13.5px;line-height:1.7;letter-spacing:.02em;color:var(--ink-faint);
+}
+.gal-date{flex:0 0 auto;font-size:12px;letter-spacing:.1em;color:var(--ink-faint)}
+
+/* 上一张 / 下一张放在进度条那一行 ——
+   幻灯片宽度是随画幅变的，按钮悬在两侧没法对齐，放在这里永远对得上。 */
+.gal-hud-wrap{max-width:var(--wrap-max);margin:0 auto;padding:0 var(--wrap-pad)}
+.gal-hud{display:flex;align-items:center;gap:18px;margin-top:clamp(20px,3vw,30px)}
+.gal-nav{flex:0 0 auto;display:inline-flex;align-items:center;gap:14px}
+.gal-btn{
+  appearance:none;width:32px;height:32px;padding:0;border-radius:100px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink-soft);
+  font-size:14px;line-height:1;
+  transition:border-color .35s var(--ease),color .35s var(--ease),transform .35s var(--ease);
+}
+.gal-btn:hover{border-color:var(--accent);color:var(--accent)}
+.gal-btn:active{transform:scale(.92)}
+.gal-count{font-size:12px;letter-spacing:.14em;color:var(--ink-faint);white-space:nowrap}
+.gal-count b{font-family:var(--serif);font-weight:600;font-size:13px;color:var(--ink)}
+.gal-bar{position:relative;flex:1 1 auto;height:1px;background:var(--rule)}
+.gal-bar i{
+  position:absolute;left:0;top:0;height:1px;width:0;background:var(--accent);
+  transition:width .45s var(--ease);
+}
+.gal-hint{flex:0 0 auto;font-size:11.5px;letter-spacing:.16em;color:var(--ink-faint)}
+
+.gal-thumbs{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
+  gap:10px;margin:clamp(34px,5.5vw,64px) 0 0;
+}
+.gal-th{
+  appearance:none;padding:0;cursor:pointer;overflow:hidden;
+  aspect-ratio:1;border:1px solid var(--rule);border-radius:2px;background:var(--paper-2);
+  opacity:.6;
+  transition:opacity .4s var(--ease),border-color .4s var(--ease),transform .4s var(--ease);
+}
+.gal-th picture{display:block;width:100%;height:100%}
+.gal-th img{display:block;width:100%;height:100%;object-fit:cover}
+.gal-th:hover{opacity:1}
+.gal-th.on{opacity:1;border-color:var(--accent);transform:translateY(-2px)}
+
+/* 首页胶片条：标题右边的「全部影像 →」，以及每一帧变成可点的链接 */
+.strip-head .strip-more{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11.5px;letter-spacing:.16em;color:var(--ink-soft);
+  text-decoration:none;
+  transition:gap .4s var(--ease),color .4s var(--ease);
+}
+.strip-head .strip-more:hover{gap:14px;color:var(--accent)}
+.strip-head .strip-more .ar{transition:transform .4s var(--ease)}
+a.frame{display:block;text-decoration:none;color:inherit}
+a.frame img{transition:transform .55s var(--ease)}
+a.frame:hover img{transform:translateY(-4px)}
+a.frame p b{transition:color .4s var(--ease)}
+a.frame:hover p b{color:var(--accent)}
+
+@media(max-width:720px){
+  .gal{--gal-h:min(46vh,400px);--gal-w:90vw}
+  .gal-hud{gap:12px}
+  .gal-hint{display:none}
+  .gal-cap{flex-wrap:wrap}
+  .gal-date{margin-left:auto}
+  .gal-thumbs{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px}
+}

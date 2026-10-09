@@ -1,0 +1,52 @@
+# 影像页（/gallery/）的照片清单
+#
+# 怎么加图 / 换图：
+#   1) 照片放进 assets/images/（**不要放 static/**，放 static 的图 Hugo 不处理，
+#      原图和 EXIF 里的定位、机型会一起公开）
+#   2) 在下面加一条，顺序就是画廊里的顺序
+#
+# 字段：
+#   img    图片路径，形如 /images/xxx.jpg
+#   title  场景标题（一行，会显示在图下面最大的那行）
+#   note   场景备注（一句话，写清楚这张照片当时在发生什么）
+#   date   可选，形如 2026.09.28；不写就不显示
+
+- img: /images/ultrasound.jpg
+  title: 第一次见你
+  note: 四维彩超的屏幕上，你侧着脸，像一个小小的、正在做梦的人
+
+- img: /images/family.jpg
+  title: 山上的蘑菇屋
+  note: 爸爸妈妈先替你去看了看。那时候你还只是个念头
+
+- img: /images/birth.jpg
+  title: 出生的那个清晨
+  note: 凌晨 5 点，护士把裹在小熊襁褓里的你交到爸爸手上
+
+- img: /images/film-01.jpg
+  title: 打哈欠
+  note: 绿色的玩偶比你还大，你打了一个比脸还大的哈欠
+
+- img: /images/film-02.jpg
+  title: 举手投降
+  note: 睡着的时候双手举在耳边，睡姿第一名
+
+- img: /images/one-month-3.jpg
+  title: 妈妈的手
+  note: 深夜，妈妈躺在大床上，一只手还伸向熟睡的你
+
+- img: /images/one-month-2.jpg
+  title: 凌晨 01:47
+  note: 走廊里的第 N 圈，抱着你走过来，走过去
+
+- img: /images/film-06.jpg
+  title: 一人一半
+  note: 整张床都是你的，我们只占一条边
+
+- img: /images/one-month-4.jpg
+  title: 趴在爸爸胸口
+  note: 哄着哄着，两个人一起睡着了
+
+- img: /images/one-month-1.jpg
+  title: 满月
+  note: 双手举在耳边睡着的样子，像在梦里投降

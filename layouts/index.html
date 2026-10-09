@@ -124,19 +124,20 @@
   <div class="strip-wrap">
     <div class="strip-head">
       <h3>{{ site.Params.capsuleFilmTitle | default "最近的胶片" }}</h3>
-      <span>SCROLL →</span>
+      {{- /* 整条胶片条都是通往影像页的入口：点某一帧就落在那一张上 */ -}}
+      <a class="strip-more" href="{{ `gallery/` | relURL }}">全部影像 <span class="ar">→</span></a>
     </div>
     <div class="strip">
-      {{- range . }}
-      <div class="frame">
+      {{- range $i, $p := . }}
+      <a class="frame" href="{{ `gallery/` | relURL }}#p{{ add $i 1 }}" title="在影像页里看这张">
         {{- /* 走图片管线：重新编码（抹掉 EXIF/GPS）+ WebP + srcset */ -}}
         {{- partial "capsule-img.html" (dict
-              "src" .img
-              "alt" .title
+              "src" $p.img
+              "alt" $p.title
               "sizes" "(max-width:720px) 80vw, 460px"
               "max" 760) -}}
-        <p><b>{{ .title }}</b>{{ with .note }}<br>{{ . }}{{ end }}</p>
-      </div>
+        <p><b>{{ $p.title }}</b>{{ with $p.note }}<br>{{ . }}{{ end }}</p>
+      </a>
       {{- end }}
     </div>
   </div>
