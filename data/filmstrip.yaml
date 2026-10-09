@@ -1,6 +1,13 @@
 # 首页「胶片条」的照片清单
-# 想换图：把新照片放进 static/images/，改下面的文件名即可。
-# 张数随意增减，版式会自动适应。
+#
+# 怎么换图：把照片放进 assets/images/（Hugo 只处理 assets/ 里的图，放 static/
+#   的图不压缩、EXIF 也会跟着公开），再改下面的文件名即可。
+#   张数随意增减，版式会自动适应。
+#
+# to 字段（可选）—— 让首页这一帧点到影像页的「同一张」：
+#   首页每一帧都会链到 /gallery/#pN。模板先在 data/gallery.yaml 里按图片路径
+#   找对应的那张；找不到时（比如同场景在相册里留的是另一张取景）才用这里的 to
+#   指过去。两边都匹配不上的帧会退化成静态图（点了没反应）。
 
 - img: /images/film-01.jpg
   title: 打哈欠
@@ -13,14 +20,17 @@
 - img: /images/film-03.jpg
   title: 趴在爸爸胸口
   note: 你的专属床垫
+  to: /images/one-month-4.jpg
 
 - img: /images/film-04.jpg
   title: 妈妈和你
   note: 凌晨两点半的并排睡
+  to: /images/one-month-3.jpg
 
 - img: /images/film-05.jpg
   title: 凌晨 01:47
   note: 走廊里的第 N 圈
+  to: /images/one-month-2.jpg
 
 - img: /images/film-06.jpg
   title: 一人一半

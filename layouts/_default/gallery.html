@@ -1,0 +1,104 @@
+{{- /* ==========================================================
+   gallery.html — 影像页（/gallery/）
+
+   照片清单在 data/gallery.yaml，这个模板只负责排版。
+   图片一律走 partials/capsule-img.html：重新编码（EXIF/GPS 不外泄）
+   + WebP + srcset。
+
+   为什么要在这里算 --r（画幅比）：
+   幻灯片的「相纸托盘」是等高、宽度自适应的。宽度 = 托盘内高 × 画幅比，
+   必须由模板把真实比例告诉 CSS，托盘才能恰好框住照片 ——
+   否则方形的照片会被塞进一个宽出一大截的框里，两边全是空白。
+   比例取自原图（不是压缩副本），所以和实际输出一定一致。
+
+   交互（左右滑动 / 方向键 / 缩略图 / 鼠标拖拽）的脚本在
+   layouts/_default/baseof.html 里，靠 #galTrack 是否存在决定是否启用。
+   ========================================================== */ -}}
+{{ define "main" }}
+{{- $items := slice -}}
+{{- range site.Data.gallery -}}
+  {{- $ratio := "1.000000" -}}
+  {{- $res := resources.Get (strings.TrimPrefix "/" .img) -}}
+  {{- if and $res $res.Width $res.Height -}}
+    {{- $ratio = printf "%.6f" (div (float $res.Width) (float $res.Height)) -}}
+  {{- end -}}
+  {{- $items = $items | append (dict
+        "img" .img "title" .title "note" .note "date" .date "ratio" $ratio) -}}
+{{- end -}}
+{{- $n := len $items -}}
+
+<div class="wrap">
+
+  <section class="masthead is-inner">
+    <div class="kicker rv"><a href="{{ `posts/` | relURL }}">← 全部存档</a></div>
+    <h1 class="rv d1">{{ .Title }}</h1>
+    <div class="mast-rule rv d2">
+      <span>共 {{ $n }} 张</span>
+      <span class="sep">/</span>
+      <span>左右滑动 · 方向键 · 点缩略图</span>
+      <span class="grow"></span>
+      <span>{{ site.Params.capsuleHost | default "爸爸 · 胖虎 主持" }}</span>
+    </div>
+  </section>
+
+  {{- with .Content }}
+  <div class="prose gal-intro rv d2">{{ . }}</div>
+  {{- end }}
+
+</div>
+
+{{ with $items }}
+{{- /* 通栏画廊：放在 .wrap 之外，所以整条是通栏块 */ -}}
+<section class="gal" id="gal">
+  <div class="gal-track" id="galTrack" tabindex="0" role="group" aria-label="照片，左右滑动查看">
+    {{- range $i, $p := . }}
+    <figure class="gal-slide" id="p{{ add $i 1 }}" data-i="{{ $i }}" style="--r:{{ $p.ratio }}">
+      <div class="gal-frame">
+        {{- partial "capsule-img.html" (dict
+              "src" $p.img
+              "alt" ($p.title | default "胡知一")
+              "sizes" "(max-width:1080px) 90vw, 780px"
+              "max" 1600
+              "loading" (cond (eq $i 0) "eager" "lazy")) -}}
+      </div>
+      <figcaption class="gal-cap">
+        <span class="gal-num">{{ printf "%02d" (add $i 1) }}</span>
+        <span class="gal-txt">
+          <b>{{ $p.title }}</b>
+          {{- with $p.note }}<i>{{ . }}</i>{{ end }}
+        </span>
+        {{- with $p.date }}<span class="gal-date">{{ . }}</span>{{ end }}
+      </figcaption>
+    </figure>
+    {{- end }}
+  </div>
+
+  <div class="gal-hud-wrap">
+    <div class="gal-hud">
+      <span class="gal-nav">
+        <button class="gal-btn" id="galPrev" type="button" aria-label="上一张">←</button>
+        <span class="gal-count"><b id="galNow">01</b> / {{ $n }}</span>
+        <button class="gal-btn" id="galNext" type="button" aria-label="下一张">→</button>
+      </span>
+      <span class="gal-bar"><i id="galFill"></i></span>
+      <span class="gal-hint">拖动 · 滑动 · 方向键</span>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="gal-thumbs" id="galThumbs">
+    {{- range $i, $p := . }}
+    <button class="gal-th" type="button" data-i="{{ $i }}" aria-label="{{ $p.title }}" title="{{ $p.title }}">
+      {{- partial "capsule-img.html" (dict
+            "src" $p.img
+            "alt" $p.title
+            "sizes" "200px"
+            "max" 480) -}}
+    </button>
+    {{- end }}
+  </div>
+</div>
+{{ end }}
+
+{{ end }}

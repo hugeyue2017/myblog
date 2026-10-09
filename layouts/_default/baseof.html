@@ -67,8 +67,9 @@
 </script>
 <link rel="stylesheet" href="{{ `css/capsule.css` | relURL }}">
 {{- with site.Params.capsuleFavicon }}<link rel="icon" href="{{ . | relURL }}">{{ end }}
-{{- /* 关掉 JS 时也要能读到正文 —— .rv 默认是 opacity:0，靠脚本淡入 */}}
-<noscript><style>.rv{opacity:1!important;transform:none!important}</style></noscript>
+{{- /* 关掉 JS 时也要能读到正文 —— .rv 默认是 opacity:0，靠脚本淡入；
+       影像页的幻灯片同理（不在中心的那几张本来是压暗的）。 */}}
+<noscript><style>.rv,.gal-slide{opacity:1!important;transform:none!important}.gal-arrow{display:none}</style></noscript>
 {{ block "head" . }}{{ end }}
 </head>
 <body>
@@ -152,6 +153,149 @@
         strip.scrollLeft+=e.deltaY; e.preventDefault();
       }
     },{passive:false});
+    /* 胶片条每一帧现在是通往影像页的链接。
+       只想把这一条滑过去时，不该被当成点击。 */
+    var stripStart=0;
+    strip.addEventListener('pointerdown',function(){stripStart=strip.scrollLeft});
+    strip.addEventListener('click',function(e){
+      if(Math.abs(strip.scrollLeft-stripStart)>6){e.preventDefault();e.stopPropagation();}
+    },true);
+  }
+
+  /* ---------- 影像页：横向滑动画廊 ----------
+     靠 #galTrack 是否存在决定要不要跑，所以这段对别的页面没有影响。 */
+  var track=document.getElementById('galTrack');
+  if(track&&track.children.length){
+    var slides=[].slice.call(track.children);
+    var nowEl=document.getElementById('galNow');
+    var fillEl=document.getElementById('galFill');
+    var thumbs=[].slice.call(document.querySelectorAll('.gal-th'));
+    var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches);
+    var cur=0,rafId=0,moved=0,dragging=false,startX=0,startL=0,rtId=0;
+
+    function pad2(n){return (n<10?'0':'')+n}
+    function target(i){
+      var s=slides[i];
+      return s.offsetLeft-(track.clientWidth-s.offsetWidth)/2;
+    }
+    function setActive(i){
+      cur=i;
+      for(var k=0;k<slides.length;k++){slides[k].classList.toggle('on',k===i)}
+      if(nowEl){nowEl.textContent=pad2(i+1)}
+      if(fillEl){fillEl.style.width=((i+1)/slides.length*100)+'%'}
+      for(var t=0;t<thumbs.length;t++){
+        thumbs[t].classList.toggle('on',t===i);
+        if(t===i){thumbs[t].setAttribute('aria-current','true')}
+        else{thumbs[t].removeAttribute('aria-current')}
+      }
+      /* 顺手把当前这张写进地址栏，URL 复制出去就能定位到同一张。
+         replaceState 不会触发 hashchange，也不会滚动页面。 */
+      if(location.hash!=='#p'+(i+1)){
+        try{history.replaceState(null,'','#p'+(i+1))}catch(e){}
+      }
+    }
+    function nearest(){
+      var mid=track.scrollLeft+track.clientWidth/2,best=0,bd=Infinity;
+      for(var i=0;i<slides.length;i++){
+        var d=Math.abs(slides[i].offsetLeft+slides[i].offsetWidth/2-mid);
+        if(d<bd){bd=d;best=i}
+      }
+      return best;
+    }
+    function go(i,animate){
+      i=Math.max(0,Math.min(slides.length-1,i));
+      track.scrollTo({left:target(i),behavior:(animate===false||reduce)?'auto':'smooth'});
+      setActive(i);
+    }
+    track.addEventListener('scroll',function(){
+      if(rafId){return}
+      rafId=requestAnimationFrame(function(){
+        rafId=0;
+        var i=nearest();
+        if(i!==cur){setActive(i)}
+      });
+    },{passive:true});
+
+    var gprev=document.getElementById('galPrev'),gnext=document.getElementById('galNext');
+    if(gprev){gprev.addEventListener('click',function(){go(cur-1)})}
+    if(gnext){gnext.addEventListener('click',function(){go(cur+1)})}
+    thumbs.forEach(function(t){
+      t.addEventListener('click',function(){go(parseInt(t.getAttribute('data-i'),10)||0)});
+    });
+
+    /* 方向键：只在画廊确实在视口里时才接管，不抢页面正常的翻页 */
+    addEventListener('keydown',function(e){
+      if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'){return}
+      if(e.metaKey||e.ctrlKey||e.altKey||e.shiftKey){return}
+      var r=track.getBoundingClientRect();
+      if(r.bottom<120||r.top>innerHeight-120){return}
+      go(cur+(e.key==='ArrowRight'?1:-1));
+      e.preventDefault();
+    });
+
+    /* 鼠标滚轮：竖向滚改成横向滑；滑到头就把滚动交还页面。
+       注意必须临时关掉 scroll-snap —— 吸在 x mandatory 上的时候，
+       直接改 scrollLeft 会被浏览器立刻吸回原位，等于没滚。 */
+    var wheelT=0;
+    track.addEventListener('wheel',function(e){
+      if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){return}
+      var max=track.scrollWidth-track.clientWidth,d=e.deltaY;
+      if(max<=0||(d>0&&track.scrollLeft>=max-1)||(d<0&&track.scrollLeft<=1)){return}
+      track.style.scrollSnapType='none';
+      track.scrollLeft+=d;
+      e.preventDefault();
+      clearTimeout(wheelT);
+      wheelT=setTimeout(function(){
+        track.style.scrollSnapType='';
+        go(nearest());
+      },180);
+    },{passive:false});
+
+    /* 鼠标拖拽。触屏交给原生滑动，不接管。 */
+    track.addEventListener('pointerdown',function(e){
+      if(e.pointerType!=='mouse'||e.button!==0){return}
+      dragging=true;moved=0;startX=e.clientX;startL=track.scrollLeft;
+      track.classList.add('grab');track.style.scrollSnapType='none';
+    });
+    addEventListener('pointermove',function(e){
+      if(!dragging){return}
+      var dx=e.clientX-startX;
+      if(Math.abs(dx)>moved){moved=Math.abs(dx)}
+      track.scrollLeft=startL-dx;
+    });
+    function endDrag(){
+      if(!dragging){return}
+      dragging=false;
+      track.classList.remove('grab');track.style.scrollSnapType='';
+      if(moved>6){go(nearest())}
+    }
+    addEventListener('pointerup',endDrag);
+    addEventListener('pointercancel',endDrag);
+    track.addEventListener('click',function(e){
+      if(moved>6){e.preventDefault();e.stopPropagation()}
+      moved=0;
+    },true);
+
+    /* 深链：/gallery/#p3 直接落在第 3 张 —— 首页胶片条就是这么跳过来的。
+       为什么要把 jumpIdx 存下来反复用：
+       1) 图还没加载完时算出的位置可能不准，等 load 之后再落一次；
+       2) 如果这个 hash 是「同一页内改 hash」（浏览器不会重新跑脚本，
+          只会自己把 #pN 那个元素滚进视野），得靠 hashchange 再纠正一次；
+       3) 浏览器原生的锚点滚动比我们的脚本晚，所以再加一次延时兜底。
+       照片托盘是固定高度、宽度由画幅比定死，所以这几次定位的结果一致。 */
+    var jm=(location.hash||'').match(/^#p(\d+)$/);
+    var jumpIdx=jm?Math.max(0,Math.min(slides.length-1,parseInt(jm[1],10)-1)):0;
+    go(jumpIdx,false);
+    addEventListener('load',function(){go(jumpIdx,false)});
+    setTimeout(function(){go(jumpIdx,false)},320);
+    addEventListener('hashchange',function(){
+      var m=(location.hash||'').match(/^#p(\d+)$/);
+      if(m){go(parseInt(m[1],10)-1)}
+    });
+    addEventListener('resize',function(){
+      clearTimeout(rtId);
+      rtId=setTimeout(function(){go(cur,false)},150);
+    });
   }
 })();
 </script>
