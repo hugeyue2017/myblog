@@ -2,6 +2,7 @@
    背景乐挂件（全站）—— 张悬《宝贝》
    原来挂在影像页 #cap-gallery 里面，只有那一页能用；
    现在改由 baseof.html 在 </body> 前统一引入 —— 任何一页进来都在。
+   位置：右上角（原为右下角，2026-10-12 按用户要求改）；顶栏出现时自动让位。
    所以选择器全部去掉 #cap-gallery 前缀，变量自带兜底，
    不依赖任何页面的作用域（主题 :root 有 --accent / --serif 就直接用，
    没有就退回下面的默认值）。
@@ -9,17 +10,24 @@
 .bgm,
 .bgm *{box-sizing:border-box}
 
+/* 位置：**右上角**（2026-10-12 用户要求 —— 原来在右下角，「不太看得到」）。
+   ⚠️ 右上角本来被固定顶栏占着（.topbar 是 position:fixed;top:0，滚动过 180px 才
+   滑下来），所以顶栏一出现就得把按钮让到它下面去，否则叠在一起点不着。
+   让位这件事由 JS 挂 body.nav-show（capsule-bgm.js），这里只管两种位置的 top。
+   top 也写进 transition：顶栏是 .5s 滑下来的，按钮同步让位才不显得「啪」地跳。 */
 .bgm{
   position:fixed;z-index:55;               /* 页面内容之上，但压在影像页灯箱(60)底下 ——
                                               看大图时是模态，挂件不该浮在上面 */
   right:clamp(16px,2.6vw,30px);
-  bottom:calc(clamp(16px,2.6vw,30px) + env(safe-area-inset-bottom,0px));
+  top:calc(clamp(18px,2.6vw,30px) + env(safe-area-inset-top,0px));
   opacity:0;visibility:hidden;
-  transition:opacity .5s ease,visibility .5s;
+  transition:top .48s cubic-bezier(.22,1,.36,1),opacity .5s ease,visibility .5s;
   font-family:var(--sans,-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif);
   font-size:12px;line-height:1.6;
   text-align:left;
 }
+/* 顶栏滑下来 → 让出它那 58px（顶栏高 12+30+12 + 上下留白） */
+body.nav-show .bgm{top:calc(clamp(18px,2.6vw,30px) + 58px + env(safe-area-inset-top,0px))}
 .bgm.is-ready{opacity:1;visibility:visible}
 .bgm.is-dim{opacity:0;visibility:hidden;transition-delay:0s}
 
@@ -139,7 +147,9 @@
 
 /* ---------- 手机 ---------- */
 @media (max-width:640px){
-  .bgm{right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  .bgm{right:14px;top:calc(14px + env(safe-area-inset-top,0px))}
+  /* 手机上顶栏只剩「站名 + 主题按钮」，高 54px —— 让 56px 足够 */
+  body.nav-show .bgm{top:calc(14px + 56px + env(safe-area-inset-top,0px))}
   .bgm-btn{width:46px;height:46px}
   .bgm-disc{width:30px;height:30px}
   .bgm-disc::before{width:11px;height:11px}

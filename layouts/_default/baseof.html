@@ -90,15 +90,18 @@
 <header class="topbar" id="topbar">
   <div class="topbar-in">
     <a class="brand" href="{{ .Site.Home.RelPermalink }}">{{ $siteTitle }}</a>
+    {{- /* ⚠️ 首页的「影像」曾经指向 #strip（页内锚点，只是滚到首页那条胶片条），
+           点下去看着像「什么都没发生」。现在直接进影像页 /gallery/。
+           「回到封面」必须排在其它链接之前 —— probe-pjax.mjs 用
+           `header .topnav a:not([href$="/posts/"])` 取第一个来点「回到封面」。 */}}
     <nav class="topnav">
       {{- if .IsHome }}
       <a href="#feature">本期</a>
-      {{- with site.Data.filmstrip }}
-      <a href="#strip">影像</a>
-      {{- end }}
+      <a href="{{ `gallery/` | relURL }}">影像</a>
       <a href="#archive">存档</a>
       {{- else }}
       <a href="{{ .Site.Home.RelPermalink }}">回到封面</a>
+      <a href="{{ `gallery/` | relURL }}">影像</a>
       <a href="{{ `posts/` | relURL }}">存档</a>
       {{- end }}
     </nav>
