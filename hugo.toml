@@ -75,6 +75,12 @@ enableRobotsTXT = true
   # 没有单独指定分享图时的兜底图。放在 assets/images/ 下会被自动裁成 1200×630
   images = ['images/og-default.jpg']
 
+  # ---- 背景乐（全站挂件）----
+  # 把音频放到 static/audio/ 下，文件名对上就能响；文件不在挂件会自己淡出隐藏。
+  capsuleBgm        = 'audio/bao-bei.mp3'
+  capsuleBgmTitle   = '宝贝'
+  capsuleBgmArtist  = '张悬'
+
   [params.assets]
     theme_color = '#faf7f2'
 

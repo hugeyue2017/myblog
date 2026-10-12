@@ -67,6 +67,7 @@
 }catch(e){}})();
 </script>
 <link rel="stylesheet" href="{{ `css/capsule.css` | relURL }}">
+<link rel="stylesheet" href="{{ `css/capsule-bgm.css` | relURL }}">
 {{- with site.Params.capsuleFavicon }}<link rel="icon" href="{{ . | relURL }}">{{ end }}
 {{- /* 关掉 JS 时也要能读到正文 —— .rv 默认是 opacity:0，靠脚本淡入；
        影像页的幻灯片同理（不在中心的那几张本来是压暗的）。 */}}
@@ -342,5 +343,8 @@
   }
 })();
 </script>
+{{- /* 背景乐挂件：全站每页都在，翻页接着放 */ -}}
+{{ partial "capsule-bgm.html" . }}
+<script src="{{ `js/capsule-bgm.js` | relURL }}" defer></script>
 </body>
 </html>
