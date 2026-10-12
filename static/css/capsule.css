@@ -342,6 +342,11 @@ a{color:inherit}
 .strip::-webkit-scrollbar{height:4px}
 .strip::-webkit-scrollbar-thumb{background:var(--rule);border-radius:2px}
 .frame{flex:0 0 auto;scroll-snap-align:start}
+/* 自动横滑时不吸附。.strip 本身是 scroll-snap-type:x proximity ——
+   脚本每帧直接改 scrollLeft，会被吸附拽回去，看着像「滑一下就卡住」。
+   类名由脚本在补完循环帧之后加上（减少动态效果的用户不会有这个类，
+   他们仍是原来的「滚轮 + 吸附」手感）。 */
+.strip.is-auto{scroll-snap-type:none}
 .frame img{
   display:block;
   /* v2：统一高度、宽度按原始画幅走 —— 原来的 3:4 + object-fit:cover

@@ -124,9 +124,10 @@
   <div class="strip-wrap">
     <div class="strip-head">
       <h3>{{ site.Params.capsuleFilmTitle | default "最近的胶片" }}</h3>
-      {{- /* 保持原版：右上角就是这一行提示，不加「全部影像」按钮。
-             胶片条本身就是入口 —— 点某一帧就落在影像页的那一张上。 */ -}}
-      <span>SCROLL →</span>
+      {{- /* 右上角只有这一行提示，不加「全部影像」按钮 —— 胶片条本身就是入口。
+             id 是给脚本改字用的：自动滑时写 AUTO ↻，鼠标悬停时写 PAUSED；
+             脚本没跑（减少动态效果 / 关了 JS）就保持 SCROLL →。 */ -}}
+      <span id="stripHint">SCROLL →</span>
     </div>
     <div class="strip">
       {{- /* 每一帧都链到影像页里「同一张」照片上（/gallery/#pN）。
