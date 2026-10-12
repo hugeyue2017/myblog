@@ -78,8 +78,11 @@
   <div class="fade l"></div>
   <div class="fade r"></div>
   <div class="ticks">{{ range $items }}<i></i>{{ end }}</div>
+  {{- /* 「左右拖动 · 点击放大」的引导挂在展台左上角。
+         2026-10-12 用户要求说明文字放到照片正下方居中，底部中央让给说明，
+         这条提示就挪到角落，免得跟说明抢位置。 */}}
+  <div class="hint"><span class="dots"><i></i><i></i></span> {{ site.Params.capsuleGalleryTip | default "左右拖动 · 点击放大" }}</div>
   <div class="hud">
-    <div class="hint"><span class="dots"><i></i><i></i></span> {{ site.Params.capsuleGalleryTip | default "左右拖动 · 点击放大" }}</div>
     <div class="now" id="now">
       <span class="num" id="nowNum"></span>
       <span class="ttl" id="nowTtl"></span>
