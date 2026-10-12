@@ -101,6 +101,13 @@ a{color:inherit}
 
 /* ---------- 2. 顶栏与进度条 ---------- */
 .progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:70;width:0}
+/* ---------- 局部导航（capsule-pjax.js）进行中的一点反馈 ----------
+   网络慢的时候，点完链接要等一小会儿才有新内容，光指着它「有反应」会发虚。
+   让顶栏那条线先走满，给个「确实点到了」的信号。
+   ⚠️ #bar 的宽度是滚动脚本写成的行内样式，行内优先级最高 ——
+   这里只能靠 !important 盖住，且只在这一瞬（通常几十毫秒）生效。 */
+html.cap-nav{cursor:progress}
+html.cap-nav .progress{width:100%!important}
 .topbar{
   position:fixed;top:0;left:0;right:0;z-index:60;
   background:var(--topbar);
