@@ -11,6 +11,13 @@
 (function () {
   'use strict';
 
+  /* ⚠️ 一个文档里只允许有一个播放器实例。
+     站点现在走局部导航（capsule-pjax.js），换页时正文被替换但本文件不会
+     重新加载、<audio> 也不会重建；可万一它被重复执行（脚本被重跑），
+     第二次初始化会把音量归零、进度重设 —— 听感上就是「卡一下」。
+     这里直接挡住。 */
+  if (window.__capBgm) return;
+
   var box = document.getElementById('bgm');
   if (!box) return;
   var audio = document.getElementById('bgmAudio');

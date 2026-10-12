@@ -93,6 +93,14 @@ enableRobotsTXT = true
   capsuleGuardPass  = '5726150'
   capsuleGuardNote  = '这些字是留给小猪咪的，不对外转载。'
 
+  # ---- 翻页方式：局部导航（capsule-pjax.js）----
+  # true（默认）＝站内点链接只换正文，不重载整个页面。这样做是为了背景乐 ——
+  #   整页重载会把 <audio> 一起销毁重建，音乐一秒断一次，而且新页面还会被
+  #   浏览器的自动播放策略拦下，看起来就是「一翻页就自动暂停」。
+  #   顺带也没有了整页白屏。
+  # 想退回普通多页跳转：把这行改成 false（或删掉、注释掉本段并改写为 false）。
+  capsulePjax       = true
+
   [params.assets]
     theme_color = '#faf7f2'
 

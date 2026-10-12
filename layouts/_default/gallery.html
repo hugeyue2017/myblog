@@ -1,112 +1,109 @@
 {{- /* ==========================================================
-   gallery.html — 影像页（/gallery/）
+   gallery.html — 「影像」页：横向可拖拽照片带 + 灯箱
+
+   来源：2026-10-12 采用「另一台电脑那套」的构图（hishaamfataar 手法）——
+   一排照片左右排列、拖动换位、居中那张最亮最大、悬停再放大、
+   点居中那张开大图（灯箱）。替换掉此前那版幻灯片式；旧源码另存于
+   _repo/_superseded/gallery.slides-v2-20261012.html，实现笔记见「主题说明.md」§七。
 
    照片清单在 data/gallery.yaml，这个模板只负责排版。
-   图片一律走 partials/capsule-img.html：重新编码（EXIF/GPS 不外泄）
-   + WebP + srcset。
+   ⚠️ 图片一律走 partials/capsule-img.html —— 重新编码（EXIF/GPS 不外泄）
+   + WebP + srcset。**包内那套是把图片路径直接丢给 relURL 输出（原图直出），
+   元数据会一起发出去，这里已全部改掉。** 灯箱大图也走管线（data-full，1600 宽副本）。
 
-   为什么要在这里算 --r（画幅比）：
-   幻灯片的「相纸托盘」是等高、宽度自适应的。宽度 = 托盘内高 × 画幅比，
-   必须由模板把真实比例告诉 CSS，托盘才能恰好框住照片 ——
-   否则方形的照片会被塞进一个宽出一大截的框里，两边全是空白。
+   为什么要在这里算 --ar（画幅比）：
+   照片带是「所有照片同高、宽度 = 高度 × 画幅比」。比例由模板从原图读出来
+   写进行内样式，CSS 变成纯计算，图片到位前后宽度都定得住。
    比例取自原图（不是压缩副本），所以和实际输出一定一致。
 
-   交互（左右滑动 / 方向键 / 缩略图 / 鼠标拖拽）的脚本在
-   layouts/_default/baseof.html 里，靠 #galTrack 是否存在决定是否启用。
+   交互（拖动 / 吸附 / 居中 / 灯箱 / 方向键）的脚本在本文件底部，
+   靠 #cap-gallery 是否存在决定要不要跑。
    ========================================================== */ -}}
+
 {{ define "main" }}
 {{- $items := slice -}}
 {{- range site.Data.gallery -}}
-  {{- $ratio := "1.000000" -}}
   {{- $res := resources.Get (strings.TrimPrefix "/" .img) -}}
+  {{- $ar := "1.000" -}}
+  {{- $full := "" -}}
   {{- if and $res $res.Width $res.Height -}}
-    {{- $ratio = printf "%.6f" (div (float $res.Width) (float $res.Height)) -}}
+    {{- $ar = printf "%.3f" (math.Max 0.60 (math.Min 1.48 (div (float $res.Width) (float $res.Height)))) -}}
+    {{- /* 灯箱大图：**必须**经过 Hugo 处理才会剥掉 EXIF/GPS。
+           宽于 1600 的缩到 1600；窄图不能走 RelPermalink ——
+           那等于把原图连同元数据一起发出去。用 Process 只重编码、不改尺寸。
+           （cond 会把两个分支都求值，所以这里用 if。） */ -}}
+    {{- $big := $res.Process "q86 Lanczos" -}}
+    {{- if gt $res.Width 1600 -}}{{- $big = $res.Resize "1600x q86 Lanczos" -}}{{- end -}}
+    {{- $full = $big.RelPermalink -}}
   {{- end -}}
   {{- $items = $items | append (dict
-        "img" .img "title" .title "note" .note "date" .date "ratio" $ratio) -}}
+        "img" .img "title" .title "note" .note "date" .date "ar" $ar "full" $full) -}}
 {{- end -}}
 {{- $n := len $items -}}
 
+<div id="cap-gallery">
 <div class="wrap">
-
-  <section class="masthead is-inner">
-    <div class="kicker rv"><a href="{{ `posts/` | relURL }}">← 全部存档</a></div>
-    <h1 class="rv d1">{{ .Title }}</h1>
-    <div class="mast-rule rv d2">
-      <span>共 {{ $n }} 张</span>
+  <section class="masthead">
+    <a class="back" href="{{ `posts/` | relURL }}">← 全部存档</a>
+    <h1>{{ .Title }}</h1>
+    <div class="mast-rule">
+      <span>共 <b>{{ $n }}</b> 张</span>
       <span class="sep">/</span>
-      <span>自动播放 · 左右滑动 · 方向键</span>
+      <span>{{ site.Params.capsuleGalleryHint | default "左右拖动 · 点击放大 · 方向键" }}</span>
       <span class="grow"></span>
       <span>{{ site.Params.capsuleHost | default "爸爸 · 胖虎 主持" }}</span>
     </div>
+    {{ with .Content }}<div class="lede">{{ . }}</div>{{ end }}
   </section>
-
-  {{- with .Content }}
-  <div class="prose gal-intro rv d2">{{ . }}</div>
-  {{- end }}
-
 </div>
 
-{{ with $items }}
-{{- /* 通栏画廊：放在 .wrap 之外，所以整条是通栏块 */ -}}
-<section class="gal" id="gal">
-  <div class="gal-track" id="galTrack" tabindex="0" role="group" aria-label="照片，左右滑动查看">
-    {{- range $i, $p := . }}
-    <figure class="gal-slide" id="p{{ add $i 1 }}" data-i="{{ $i }}" style="--r:{{ $p.ratio }}">
-      <div class="gal-frame">
-        {{- partial "capsule-img.html" (dict
-              "src" $p.img
-              "alt" ($p.title | default "胡知一")
-              "sizes" "(max-width:1080px) 90vw, 780px"
-              "max" 1600
-              "loading" (cond (eq $i 0) "eager" "lazy")) -}}
-      </div>
-      <figcaption class="gal-cap">
-        <span class="gal-num">{{ printf "%02d" (add $i 1) }}</span>
-        <span class="gal-txt">
-          <b>{{ $p.title }}</b>
-          {{- with $p.note }}<i>{{ . }}</i>{{ end }}
-        </span>
-        {{- with $p.date }}<span class="gal-date">{{ . }}</span>{{ end }}
-      </figcaption>
-    </figure>
-    {{- end }}
+<main class="stage" id="stage">
+  <div class="view" id="view">
+      {{- range $i, $p := $items }}
+      <figure class="slide" id="p{{ add $i 1 }}" data-i="{{ $i }}"
+              data-t="{{ $p.title }}" data-n="{{ $p.note }}" data-d="{{ $p.date }}"
+              {{- with $p.full }} data-full="{{ . }}"{{ end }}
+              style="--ar:{{ $p.ar }}">
+        <div class="frame">
+          {{- partial "capsule-img.html" (dict
+                "src" $p.img
+                "alt" ($p.title | default "胡知一")
+                "sizes" "(max-width:640px) 80vw, 640px"
+                "max" 1600
+                "loading" (cond (lt $i 8) "eager" "lazy")) -}}
+        </div>
+      </figure>
+      {{- end }}
   </div>
-
-  <div class="gal-hud-wrap">
-    <div class="gal-hud">
-      <span class="gal-nav">
-        {{- /* 自动播放开关。进页面就开始播（照片自己往右走），
-               任何交互都会自动暂停，想接着看就点这里。
-               两个图标靠 .is-playing 切换，见 capsule.css 第 14 段。 */}}
-        <button class="gal-btn gal-btn-play" id="galPlay" type="button"
-                aria-label="暂停自动播放" title="自动播放">
-          <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.6 2.6 12.7 8l-8.1 5.4Z"/></svg>
-          <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.3 3h2.8v10H4.3Zm4.6 0h2.8v10H8.9Z"/></svg>
-        </button>
-        <button class="gal-btn" id="galPrev" type="button" aria-label="上一张">←</button>
-        <span class="gal-count"><b id="galNow">01</b> / {{ $n }}</span>
-        <button class="gal-btn" id="galNext" type="button" aria-label="下一张">→</button>
-      </span>
-      <span class="gal-bar"><i id="galFill"></i></span>
-      <span class="gal-hint" id="galHint">拖动 · 滑动 · 方向键</span>
+  <div class="fade l"></div>
+  <div class="fade r"></div>
+  <div class="ticks">{{ range $items }}<i></i>{{ end }}</div>
+  <div class="hud">
+    <div class="hint"><span class="dots"><i></i><i></i></span> {{ site.Params.capsuleGalleryTip | default "左右拖动 · 点击放大" }}</div>
+    <div class="now" id="now">
+      <span class="num" id="nowNum"></span>
+      <span class="ttl" id="nowTtl"></span>
+      <span class="sub" id="nowSub"></span>
     </div>
   </div>
-</section>
+</main>
 
-<div class="wrap">
-  <div class="gal-thumbs" id="galThumbs">
-    {{- range $i, $p := . }}
-    <button class="gal-th" type="button" data-i="{{ $i }}" aria-label="{{ $p.title }}" title="{{ $p.title }}">
-      {{- partial "capsule-img.html" (dict
-            "src" $p.img
-            "alt" $p.title
-            "sizes" "200px"
-            "max" 480) -}}
-    </button>
-    {{- end }}
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="照片大图">
+  <button class="lb-x" id="lbX" aria-label="关闭">✕</button>
+  <button class="lb-nav lb-prev" id="lbPrev" aria-label="上一张">←</button>
+  <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">→</button>
+  <div class="lb-in">
+    <img id="lbImg" alt="">
+    <div class="lb-cap">
+      <span class="num" id="lbNum"></span>
+      <span class="ttl" id="lbTtl"></span>
+      <span class="sub" id="lbSub"></span>
+    </div>
   </div>
 </div>
-{{ end }}
+
+</div>
+
+{{- /* 背景乐挂件不在这里 —— 它由 baseof.html 全站引入，任何一页进来都在放。 */ -}}
 
 {{ end }}

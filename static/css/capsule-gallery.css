@@ -1,0 +1,239 @@
+/* ==========================================================
+   capsule-gallery.css —— 影像页「横向照片带 + 灯箱」的样式
+   ----------------------------------------------------------
+   原来内嵌在 layouts/_default/gallery.html 的 {{ define "head" }} 里。
+   现在全站常载（baseof.html 统一引入），原因：
+   站点改成了**局部导航**（capsule-pjax.js）—— 翻页只换正文，不换 <head>。
+   样式若还挂在影像页自己的 head 里，从首页点进影像页就会「有内容没样式」。
+   代价是多下载几 KB（gzip 后约 2KB），换来的是换页时零白屏、背景乐不断。
+
+   所有选择器都以 #cap-gallery 打头，别的页面用不到、也不会互相干扰。
+   ========================================================== */
+/* 影像页这版要整幅铺开。项目里没有 .main 容器，这条留着只是为了
+   万一将来换回带 .main 的骨架时也不会被主题宽度限制住。 */
+.main:has(#cap-gallery){max-width:none;padding:0}
+/* ==========================================================
+   影像页 · 横向可拖拽照片带
+   参考 hishaamfataar.com 的构图：一排照片左右排列，拖动换位、
+   居中那张最亮最大、悬停再放大、点居中那张开大图。
+   所有选择器都挂在 #cap-gallery 下，不会污染主题。
+   ========================================================== */
+#cap-gallery{
+  --paper:#FAF7F2;
+  --paper-2:#F3EFE7;
+  --ink:#1A1815;
+  --ink-soft:#5A544B;
+  --ink-faint:#8A8377;
+  --accent:#C0402C;
+  --rule:rgba(26,24,21,.16);
+  --stage:#12100E;
+  --serif:"Songti SC","Noto Serif SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono",ui-monospace,"Roboto Mono",Consolas,monospace;
+  color:var(--ink);
+  font-family:var(--sans);
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+/* 深色：只翻页头那一段（展台本来就是深色，不用动）。
+   变量只此一处，别再加 @media (prefers-color-scheme:dark) 兜底。 */
+:root[data-theme="dark"] #cap-gallery{
+  --paper:#17140F;
+  --paper-2:#1F1B15;
+  --ink:#EFEAE1;
+  --ink-soft:#B9B1A4;
+  --ink-faint:#8A8377;
+  --rule:rgba(239,234,225,.16);
+  --stage:#0F0D0A;
+}
+#cap-gallery *{box-sizing:border-box}
+#cap-gallery a{color:inherit;text-decoration:none}
+#cap-gallery img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+
+#cap-gallery .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,4vw,44px)}
+
+/* ---------- 顶部（沿用杂志刊语言） ---------- */
+#cap-gallery .masthead{padding:clamp(26px,4.5vw,46px) 0 clamp(20px,3vw,30px)}
+#cap-gallery .back{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;
+  color:var(--ink-faint);margin-bottom:clamp(16px,2.6vw,26px)}
+#cap-gallery .back:hover{color:var(--accent)}
+#cap-gallery h1{
+  font-family:var(--serif);font-size:clamp(38px,6.4vw,74px);
+  font-weight:600;line-height:1.02;letter-spacing:.02em;margin:0 0 clamp(14px,2vw,22px);
+}
+#cap-gallery .mast-rule{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border-top:1px solid var(--ink);padding-top:11px;
+  font-size:11.5px;letter-spacing:.14em;color:var(--ink-faint);
+}
+#cap-gallery .mast-rule .sep{color:var(--rule)}
+#cap-gallery .mast-rule .grow{flex:1}
+#cap-gallery .mast-rule b{color:var(--accent);font-weight:600;letter-spacing:.1em}
+#cap-gallery .lede{margin-top:clamp(18px,2.6vw,28px);max-width:34em}
+#cap-gallery .lede p{font-size:14.5px;color:var(--ink-soft);margin:0 0 8px}
+#cap-gallery .lede p:last-child{font-family:var(--serif);font-size:15.5px;color:var(--ink)}
+
+/* ---------- 展台 ---------- */
+#cap-gallery .stage{
+  position:relative;
+  --h:clamp(220px,44svh,450px);          /* 单张照片的高度，宽度 = 高度 × 原图比例 */
+  height:calc(var(--h) + clamp(184px,24vh,258px));
+  min-height:330px;
+  background:var(--stage);
+  /* ⚠️ 必须是 clip 而不是 hidden：hidden 在技术上仍是「滚动容器」，
+     浏览器做 #pN 锚点滚动时会把它横向滚走，整条照片带被推出视口 ——
+     看着就像「照片全没了」，而且没有任何报错。clip 不建滚动容器，免疫。 */
+  overflow:clip;
+  touch-action:pan-y;                    /* 竖向仍可滚页面，横向交给照片带 */
+  cursor:grab;
+  user-select:none;-webkit-user-select:none;
+}
+#cap-gallery .stage.is-grabbing{cursor:grabbing}
+#cap-gallery .stage::before{             /* 展墙光 */
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:radial-gradient(72% 74% at 50% 47%,rgba(255,238,214,.10),transparent 72%);
+}
+#cap-gallery .view{position:absolute;inset:0;overflow:clip}
+
+#cap-gallery .slide{
+  position:absolute;top:calc(50% - 14px);left:50%;   /* 略微上移，给底部说明留出呼吸 */
+  height:var(--h);
+  width:calc(var(--h) * var(--ar));
+  margin-left:calc(var(--h) * var(--ar) * -.5);
+  margin-top:calc(var(--h) * -.5);
+  transform-origin:50% 50%;
+  opacity:0;                             /* 交给 JS 逐帧淡入，避免首帧 21 张叠在一起 */
+  will-change:transform,opacity;
+}
+#cap-gallery .slide.is-active{z-index:4}
+#cap-gallery .slide:hover{z-index:6}
+#cap-gallery .slide .frame{
+  position:absolute;inset:0;
+  background:#FBF8F2;
+  box-shadow:0 20px 44px rgba(0,0,0,.56),0 3px 10px rgba(0,0,0,.34);
+  will-change:transform,clip-path;
+}
+/* capsule-img.html 输出的是 <picture><img></picture>，picture 默认是行内元素，
+   不铺满会让白边框不住照片。 */
+#cap-gallery .slide .frame picture{display:block;width:100%;height:100%}
+#cap-gallery .slide img{
+  display:block;width:100%;height:100%;object-fit:cover;
+  border:clamp(3px,0.32vw,6px) solid #FBF8F2;
+  background:#FBF8F2;
+}
+/* 防御：万一别的主题（或旧版 capsule.css）有命中 .frame img 的灰度/裁切规则，
+   这里用更高优先级明确盖掉。 */
+#cap-gallery .slide .frame img{filter:none;aspect-ratio:auto;transform:none}
+#cap-gallery .slide::after{              /* 悬停 / 定位时的白框 */
+  content:"";position:absolute;inset:-9px;
+  border:1px solid rgba(251,248,242,.6);
+  opacity:0;transition:opacity .34s ease;pointer-events:none;
+}
+#cap-gallery .slide.is-hot::after{opacity:1}
+
+/* 左右两侧渐变遮罩：照片从边缘淡出，而不是被硬切 */
+#cap-gallery .fade{position:absolute;top:0;bottom:0;width:clamp(56px,10vw,200px);pointer-events:none;z-index:3}
+#cap-gallery .fade.l{left:0;background:linear-gradient(90deg,var(--stage) 10%,rgba(18,16,14,0))}
+#cap-gallery .fade.r{right:0;background:linear-gradient(270deg,var(--stage) 10%,rgba(18,16,14,0))}
+
+/* 照片上方那排刻度：一眼看清「共几张 / 现在第几张」 */
+#cap-gallery .ticks{
+  position:absolute;left:50%;top:calc(50% - var(--h)/2 - 44px);
+  transform:translateX(-50%);
+  display:flex;gap:5px;z-index:5;pointer-events:none;
+}
+#cap-gallery .ticks i{
+  display:block;width:5px;height:2px;background:rgba(241,240,236,.26);
+  transition:background .32s ease,width .32s ease;
+}
+#cap-gallery .ticks i.on{background:var(--accent);width:15px}
+
+/* ---------- HUD ---------- */
+#cap-gallery .hud{
+  position:absolute;left:0;right:0;bottom:0;z-index:4;
+  padding:0 clamp(18px,3.4vw,44px) clamp(16px,2.6vw,30px);
+  display:flex;align-items:flex-end;justify-content:space-between;gap:18px;pointer-events:none;
+}
+#cap-gallery .hud *{pointer-events:auto}
+#cap-gallery .hint{
+  display:flex;align-items:center;gap:10px;
+  font-size:11.5px;letter-spacing:.16em;color:rgba(241,240,236,.62);text-transform:uppercase;
+}
+#cap-gallery .hint .dots{display:flex;gap:3px}
+#cap-gallery .hint .dots i{width:15px;height:1px;background:rgba(241,240,236,.4)}
+#cap-gallery .now{text-align:right;max-width:min(52vw,460px)}
+#cap-gallery .now .num{font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  color:var(--accent);display:block;margin-bottom:3px}
+#cap-gallery .now .ttl{font-family:var(--serif);font-size:clamp(15px,1.5vw,19px);
+  color:#F1F0EC;display:block;line-height:1.4}
+#cap-gallery .now .sub{font-size:12px;color:rgba(241,240,236,.55);display:block;margin-top:4px;line-height:1.5}
+
+/* ---------- 灯箱 ---------- */
+#cap-gallery .lb{
+  position:fixed;inset:0;z-index:60;background:rgba(9,8,7,.94);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;visibility:hidden;transition:opacity .34s ease,visibility .34s;
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  padding:clamp(16px,3vw,48px);
+}
+#cap-gallery .lb.is-open{opacity:1;visibility:visible}
+#cap-gallery .lb-in{display:flex;flex-direction:column;align-items:center;
+  gap:clamp(14px,2vw,22px);max-width:100%;max-height:100%}
+#cap-gallery .lb img{
+  max-width:min(88vw,1080px);max-height:74svh;object-fit:contain;display:block;
+  border:clamp(4px,0.5vw,9px) solid #FBF8F2;background:#FBF8F2;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);
+  transform:scale(.965);transition:transform .42s cubic-bezier(.22,1,.36,1);
+}
+#cap-gallery .lb.is-open img{transform:scale(1)}
+#cap-gallery .lb-cap{text-align:center;max-width:34em;color:#F1F0EC}
+#cap-gallery .lb-cap .num{font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+  color:var(--accent);display:block;margin-bottom:8px}
+#cap-gallery .lb-cap .ttl{font-family:var(--serif);font-size:clamp(19px,2.4vw,28px);
+  display:block;margin-bottom:8px}
+#cap-gallery .lb-cap .sub{font-size:13.5px;color:rgba(241,240,236,.66);line-height:1.7}
+#cap-gallery .lb-x{
+  position:absolute;top:clamp(14px,2.4vw,26px);right:clamp(16px,2.6vw,30px);
+  width:42px;height:42px;border:1px solid rgba(241,240,236,.28);border-radius:50%;
+  background:none;color:#F1F0EC;font-size:19px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.28s;
+}
+#cap-gallery .lb-x:hover{background:rgba(241,240,236,.12);transform:rotate(90deg)}
+#cap-gallery .lb-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:46px;height:46px;border-radius:50%;border:1px solid rgba(241,240,236,.24);
+  background:rgba(18,16,14,.5);color:#F1F0EC;font-size:17px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.26s;
+}
+#cap-gallery .lb-nav:hover{background:rgba(241,240,236,.14)}
+#cap-gallery .lb-prev{left:clamp(10px,2vw,28px)}
+#cap-gallery .lb-next{right:clamp(10px,2vw,28px)}
+
+/* ---------- 手机 ---------- */
+@media (max-width:640px){
+  #cap-gallery .stage{--h:clamp(190px,34svh,300px)}   /* 小一点，两侧的邻图才露得出来 */
+  #cap-gallery .fade{width:clamp(36px,12vw,80px)}
+  #cap-gallery .masthead{padding:16px 0 10px}
+  #cap-gallery .back{margin-bottom:9px;font-size:11px}
+  #cap-gallery h1{font-size:clamp(28px,8.4vw,38px);margin-bottom:9px}
+  #cap-gallery .mast-rule{padding-top:8px;font-size:10.5px;gap:8px}
+  #cap-gallery .lede{margin-top:11px}
+  #cap-gallery .lede p{font-size:12.5px;margin-bottom:5px;line-height:1.55}
+  #cap-gallery .lede p:last-child{font-size:13px}
+  #cap-gallery .hud{flex-direction:column;align-items:flex-start;gap:8px;padding-bottom:14px}
+  #cap-gallery .now{text-align:left;max-width:100%}
+  #cap-gallery .now .sub{display:none}
+  #cap-gallery .now .ttl{font-size:15px}
+  #cap-gallery .hint{font-size:10.5px;letter-spacing:.12em}
+  #cap-gallery .ticks{gap:3px;top:calc(50% - var(--h)/2 - 38px)}
+  #cap-gallery .ticks i{width:3px}
+  #cap-gallery .ticks i.on{width:10px}
+  #cap-gallery .lb-prev,#cap-gallery .lb-next{width:38px;height:38px}
+  #cap-gallery .lb img{max-height:64svh}
+}
+
+/* ---------- 影像页自己的降级动效 ---------- */
+@media (prefers-reduced-motion:reduce){
+  #cap-gallery .slide .frame{transition:none}
+}
+
