@@ -1,0 +1,186 @@
+/* ==========================================================
+   背景乐挂件（全站）—— 张悬《宝贝》
+   · 进任何一页都试着自动播放；被浏览器拦下时，等第一次点按再起播
+   · 唱片在转 = 正在放；点一下 = 暂停 / 接着放
+   · **跨页面接着放**：站点是多页的，每点一个链接都会重新加载。
+     用 sessionStorage 记住「放到第几秒」和「你上次是开还是关」，
+     翻页时接着上一页的进度往下走，而不是每页从头再来一遍。
+   · 音频文件缺失（404）时挂件自己藏起来，不留一个坏按钮
+   · 不依赖任何库
+   ========================================================== */
+(function () {
+  'use strict';
+
+  var box = document.getElementById('bgm');
+  if (!box) return;
+  var audio = document.getElementById('bgmAudio');
+  var btn = document.getElementById('bgmBtn');
+  var ring = document.getElementById('bgmRing');
+  if (!audio || !btn) return;
+
+  var VOL = 0.55;                          // 目标音量（0~1）
+  var RING_C = 2 * Math.PI * 24.5;         // 与 CSS / SVG 里的 r 对应
+  /* K_OFF 只在「你亲手按了暂停」时才写 —— 于是翻页时能分清两种情况：
+     ① 你关掉了 → 别自己响起来；② 播放被浏览器拦了 → 下一页继续争取自动放。 */
+  var K_OFF = 'capBgm.off', K_T = 'capBgm.t';
+  var fadeTimer = 0, metaTimer = 0, guard = 0, lastSave = 0;
+  var armed = false, live = false, dead = false, backTo = false;
+
+  audio.loop = true;
+  audio.volume = 0;                        // 从 0 淡进来，别一开口吓人
+
+  /* ---------- 小工具（隐私模式下 sessionStorage 会抛错，包起来） ---------- */
+  function store(k, v) {
+    try {
+      if (v === null) sessionStorage.removeItem(k);
+      else sessionStorage.setItem(k, v);
+    } catch (e) { /* 存不了就算了，不影响播放 */ }
+  }
+  function load(k) {
+    try { return sessionStorage.getItem(k); } catch (e) { return null; }
+  }
+  function setRing(p) {
+    if (!ring) return;
+    p = p < 0 ? 0 : (p > 1 ? 1 : p);
+    ring.style.strokeDashoffset = (RING_C * (1 - p)).toFixed(2);
+  }
+  function paint() {
+    var on = !audio.paused && !audio.ended;
+    box.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  function fade(to, ms, done) {
+    clearInterval(fadeTimer);
+    if (ms <= 0) { audio.volume = to; if (done) done(); return; }
+    var from = audio.volume, t0 = Date.now();
+    fadeTimer = setInterval(function () {
+      var k = (Date.now() - t0) / ms;
+      if (k >= 1) { audio.volume = to; clearInterval(fadeTimer); if (done) done(); return; }
+      audio.volume = from + (to - from) * k;
+    }, 40);
+  }
+  function showMeta(ms) {
+    box.classList.add('is-show');
+    clearTimeout(metaTimer);
+    metaTimer = setTimeout(function () { box.classList.remove('is-show'); }, ms);
+  }
+  function saveTime() {
+    if (!audio.paused && audio.currentTime > 0) store(K_T, audio.currentTime.toFixed(2));
+  }
+
+  /* ---------- 接上一页的进度 ---------- */
+  var saved = parseFloat(load(K_T));
+  var hasSaved = isFinite(saved) && saved > 1;
+  if (hasSaved) {
+    var seek = function () {
+      try {
+        var d = audio.duration;
+        if (d && isFinite(d) && saved < d - 0.4) audio.currentTime = saved;
+      } catch (e) { /* 还没准备好就算了 */ }
+    };
+    if (audio.readyState >= 1) seek();
+    else audio.addEventListener('loadedmetadata', seek);
+  }
+
+  /* ---------- 起播 / 暂停 ---------- */
+  function start() {
+    if (dead) return;
+    var p = audio.play();
+    if (!p || !p.then) {                   // 老浏览器：当成功处理
+      live = true; box.classList.remove('needs-tap');
+      fade(VOL, 1400); paint(); showMeta(7000);
+      store(K_OFF, null);
+      return;
+    }
+    p.then(function () {
+      live = true;
+      box.classList.remove('needs-tap');
+      fade(VOL, 1400);
+      paint();
+      showMeta(7000);
+      store(K_OFF, null);                  // 放起来了 → 取消「已关闭」标记，翻页继续放
+    })['catch'](function () {
+      armTap();                            // 被浏览器拦下 → 等用户动一下再放
+    });
+  }
+  function stop(manual) {
+    if (manual) { store(K_OFF, '1'); saveTime(); }   // 你亲手关的：翻页也别自己响起来
+    fade(0, 260, function () { audio.pause(); });
+  }
+
+  /* ---------- 自动播放被拦：挂「轻触播放」提示 ---------- */
+  function armTap() {
+    if (armed || dead || live) return;
+    armed = true;
+    box.classList.add('needs-tap');
+    document.addEventListener('pointerdown', onTap, true);
+    document.addEventListener('touchstart', onTap, true);
+    document.addEventListener('keydown', onTap, true);
+  }
+  function onTap(e) {
+    if (box.contains(e.target)) return;    // 点挂件本身，交给按钮自己的 click
+    armed = false;
+    document.removeEventListener('pointerdown', onTap, true);
+    document.removeEventListener('touchstart', onTap, true);
+    document.removeEventListener('keydown', onTap, true);
+    start();
+  }
+
+  btn.addEventListener('click', function () {
+    if (dead) return;
+    if (audio.paused) start(); else stop(true);
+  });
+
+  /* ---------- 音频自己的事件 ---------- */
+  audio.addEventListener('play', paint);
+  audio.addEventListener('pause', paint);
+  audio.addEventListener('playing', paint);
+  audio.addEventListener('timeupdate', function () {
+    var d = audio.duration;
+    setRing(d && isFinite(d) && d > 0 ? audio.currentTime / d : 0);
+    var now = Date.now();                  // 每秒最多记一次进度，别写太勤
+    if (now - lastSave > 900) { lastSave = now; saveTime(); }
+  });
+
+  function ready() { clearTimeout(guard); box.classList.add('is-ready'); }
+  audio.addEventListener('loadedmetadata', ready);
+  audio.addEventListener('canplay', ready);
+
+  function kill() {                        // 文件不在 / 打不开 → 整个挂件退场
+    if (dead) return;
+    dead = true;
+    clearTimeout(guard);
+    box.classList.remove('is-ready', 'needs-tap');
+    box.classList.add('is-dim');
+    if (window.console && console.info) {
+      console.info('[bgm] 背景乐没加载成功，挂件已自动隐藏。' +
+        '把 mp3 放到 static/audio/ 下，或在 hugo.toml 里改 params.capsuleBgm。');
+    }
+  }
+  audio.addEventListener('error', kill);
+  guard = setTimeout(function () {         // 兜底：既没元数据、也不在加载中，就当它坏了
+    if (audio.readyState < 1 && audio.networkState !== 2) kill();
+  }, 9000);
+
+  /* ---------- 切走时停一下，切回来接着放 ---------- */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      backTo = live && !audio.paused;
+      if (backTo) stop(false);
+    } else if (backTo) {
+      backTo = false;
+      start();
+    }
+  });
+  addEventListener('pagehide', saveTime);  // 翻页前把进度带走
+
+  /* ---------- 启动 ----------
+     没被手动关过就自动放（第一次进站、或你上次是开着走的）；
+     你上次亲手按了暂停 → 这次保持安静，等你点。 */
+  setRing(0);
+  paint();
+  if (load(K_OFF) !== '1') start();
+
+  /* 调试钩子：验收脚本用，正常使用无感 */
+  window.__capBgm = { box: box, audio: audio, start: start, stop: stop, saveTime: saveTime };
+})();

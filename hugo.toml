@@ -75,6 +75,24 @@ enableRobotsTXT = true
   # 没有单独指定分享图时的兜底图。放在 assets/images/ 下会被自动裁成 1200×630
   images = ['images/og-default.jpg']
 
+  # ---- 背景乐（全站挂件）----
+  # 把音频放到 static/audio/ 下，文件名对上就能响；文件不在挂件会自己淡出隐藏。
+  capsuleBgm        = 'audio/bao-bei.mp3'
+  capsuleBgmTitle   = '宝贝'
+  capsuleBgmArtist  = '张悬'
+
+  # ---- 内容保护（复制门）----
+  # 按 Ctrl+C / 右键 / 拖图片 / F12 / Ctrl+U / Ctrl+S 时会要求输入密码，
+  # 输对了才放行复制，本标签页内记住（关掉标签即失效）。
+  #
+  # ⚠️ 这是「劝退层」，不是加密，别当安全边界用：
+  #    · 网页源码本来就随 HTML 一起发到浏览器，写得再绕也挡不住存心要看的人；
+  #    · 爬虫是直接取 HTML 的，**不执行 JS**，所以它拦不住 AI 抓取 ——
+  #      管那一块的是 layouts/robots.txt 和 vercel.json 里的响应头。
+  # 想整块关掉：删掉（或注释）capsuleGuardPass 这一行即可，页面会自动不再输出。
+  capsuleGuardPass  = '5726150'
+  capsuleGuardNote  = '这些字是留给小猪咪的，不对外转载。'
+
   [params.assets]
     theme_color = '#faf7f2'
 

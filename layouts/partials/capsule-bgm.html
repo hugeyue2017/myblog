@@ -1,0 +1,37 @@
+{{- /* ==========================================================
+   capsule-bgm.html —— 背景乐挂件（全站）
+   由 layouts/_default/baseof.html 在 </body> 前统一引入，
+   所以首页 / 文章页 / 存档页 / 标签页 / 404 / 影像页 全都有，
+   而且翻页时音乐接着上一页往下走（进度存在 sessionStorage）。
+
+   音频放 static/audio/bao-bei.mp3；想在 hugo.toml 里换：
+
+     [params]
+       capsuleBgm       = "audio/bao-bei.mp3"
+       capsuleBgmTitle  = "宝贝"
+       capsuleBgmArtist = "张悬"
+
+   文件不在时挂件会自己淡出藏起来，页面上不会留一个坏按钮。
+   ========================================================== */ -}}
+{{- $bgmSrc := site.Params.capsuleBgm | default "audio/bao-bei.mp3" -}}
+{{- $bgmTtl := site.Params.capsuleBgmTitle | default "宝贝" -}}
+{{- $bgmArt := site.Params.capsuleBgmArtist | default "张悬" -}}
+<div class="bgm" id="bgm">
+  <audio id="bgmAudio" src="{{ $bgmSrc | relURL }}" loop preload="auto"></audio>
+  <div class="bgm-tip" id="bgmTip">轻触播放背景乐</div>
+  <div class="bgm-meta"><span class="k">背景乐</span><b>{{ $bgmTtl }}</b><i>{{ $bgmArt }}</i></div>
+  <button class="bgm-btn" id="bgmBtn" type="button" aria-pressed="false"
+          aria-label="背景音乐：{{ $bgmTtl }} — {{ $bgmArt }}，点击暂停或继续">
+    <span class="bgm-disc" aria-hidden="true"></span>
+    <span class="bgm-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+        <path class="i-play" d="M8 5.1v13.8L19.2 12z"/>
+        <path class="i-pause" d="M8.7 5.4h3.2v13.2H8.7zM14.8 5.4h3.2v13.2h-3.2z"/>
+      </svg>
+    </span>
+    <svg class="bgm-ring" viewBox="0 0 52 52" aria-hidden="true">
+      <circle class="rb" cx="26" cy="26" r="24.5"/>
+      <circle class="rf" id="bgmRing" cx="26" cy="26" r="24.5"/>
+    </svg>
+  </button>
+</div>

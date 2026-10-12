@@ -56,7 +56,12 @@
 {{- with $setW }}
 <source type="image/webp" srcset="{{ delimit . ", " }}" sizes="{{ $sizes }}">
 {{- end }}
-<img src="{{ $fallback }}" srcset="{{ delimit $setJ ", " }}" sizes="{{ $sizes }}" alt="{{ $alt }}" loading="{{ $loading }}" decoding="async"{{ with $class }} class="{{ . }}"{{ end }}>
+{{- /* width/height 两个属性必须带上：它们给浏览器一个宽高比，
+       图片还没下载完也能先把位置和尺寸算对。少了它们会出现两类毛病 ——
+       ① 版面在图片加载完成的一瞬间跳一下（胶片条 / 幻灯片定位尤其明显）；
+       ② 脚本在加载完成前量元素宽度会量到错的值（首页自动横滑的步进宽度就吃过这个亏）。
+       这里用原图尺寸：它只用来定比例，真正的显示尺寸由 CSS 决定。 */}}
+<img src="{{ $fallback }}" srcset="{{ delimit $setJ ", " }}" sizes="{{ $sizes }}" alt="{{ $alt }}" width="{{ $native }}" height="{{ $res.Height }}" loading="{{ $loading }}" decoding="async"{{ with $class }} class="{{ . }}"{{ end }}>
 </picture>
 {{- else -}}
 <img src="{{ $key | relURL }}" alt="{{ $alt }}" loading="{{ $loading }}" decoding="async"{{ with $class }} class="{{ . }}"{{ end }}>

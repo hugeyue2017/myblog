@@ -35,6 +35,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ if .IsHome }}{{ $siteTitle }}{{ else }}{{ $pgTitle }} · {{ $siteTitle }}{{ end }}</title>
 <meta name="description" content="{{ $desc }}">
+{{- /* 谢绝生成式 AI 抓取/训练。Google 只认 robots.txt 里的 Google-Extended
+       （见 layouts/robots.txt），这里的 noai/noimageai 是给认得这套约定的
+       爬虫看的，不认识的会直接忽略，不影响正常收录。 */}}
+<meta name="robots" content="noai, noimageai">
+<meta name="copyright" content="{{ site.Title }}">
 <link rel="canonical" href="{{ .Permalink }}">
 <meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}">
 <meta property="og:title" content="{{ if .IsHome }}{{ $siteTitle }}{{ else }}{{ $pgTitle }}{{ end }}">
@@ -67,6 +72,8 @@
 }catch(e){}})();
 </script>
 <link rel="stylesheet" href="{{ `css/capsule.css` | relURL }}">
+<link rel="stylesheet" href="{{ `css/capsule-bgm.css` | relURL }}">
+<link rel="stylesheet" href="{{ `css/capsule-protect.css` | relURL }}">
 {{- with site.Params.capsuleFavicon }}<link rel="icon" href="{{ . | relURL }}">{{ end }}
 {{- /* 关掉 JS 时也要能读到正文 —— .rv 默认是 opacity:0，靠脚本淡入；
        影像页的幻灯片同理（不在中心的那几张本来是压暗的）。 */}}
@@ -109,6 +116,10 @@
       <div class="sign">{{ site.Params.capsuleFooter | default (printf "写给你<br>的时间胶囊。") | safeHTML }}</div>
       <div class="note">{{ site.Params.capsuleFooterNote | default (printf "%s<br>每一篇都留给未来的你" (replaceRE `^https?://` "" site.BaseURL)) | safeHTML }}</div>
     </div>
+    <div class="foot-legal">
+      <b>© {{ now.Year }} {{ site.Title }}</b> · 私人记录，谢绝抓取、转载与任何形式的模型训练。<br>
+      robots.txt / HTTP 响应头已声明禁止 AI 训练用途。
+    </div>
   </div>
 </footer>
 
@@ -149,21 +160,143 @@
     document.querySelectorAll('.rv').forEach(function(el){el.classList.add('in')});
   }
 
-  // 胶片条：滚轮横滑
+  /* ---------- 首页胶片条：自动横滑（无缝跑马灯），且每一帧仍可点进影像页 ----------
+     做法：把 6 帧复制一组补在头部、再补到尾部，让内容宽度 ≥ 2 组，
+     滚过 1 组的宽度就减去 1 组 —— 视觉上无缝绕回。速度 28px/s，
+     用 rAF 按真实帧间隔推进（掉帧也不会忽快忽慢）。
+
+     ⚠️ 这里有两个必须守住的坑：
+     1) 「点一张能跳转」不能被自动滑动吞掉。判据**不能**是「scrollLeft 变了」——
+        自动播自己每帧都在改 scrollLeft，那样点哪张都点不动（页面上完全看不出原因）。
+        改成看「指针按下到抬起之间有没有横move 超过 8px」，并且按下就先 hold 住自动播，
+        让这段窗口里的 scrollLeft 只可能由用户自己产生。
+     2) .strip 是 scroll-snap-type:x proximity，程序化改 scrollLeft 会被吸回去。
+        开始自动滑时给 .strip 加 .is-auto 把 snap 关掉（见 capsule.css）。
+     另外 6 帧复制出来的副本都要 aria-hidden + tabindex=-1，
+     不然键盘用户会 Tab 过同一张照片三遍。 */
   var strip=document.querySelector('.strip');
-  if(strip){
-    strip.addEventListener('wheel',function(e){
-      if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){
-        strip.scrollLeft+=e.deltaY; e.preventDefault();
+  if(strip&&strip.children.length){
+    var sHint=document.getElementById('stripHint');
+    var sReduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches);
+    var S_SPEED=0.028;                       /* px / ms ≈ 28px 每秒 */
+    var sStep=0,sAcc=0,sRun=false,sHover=false,sVisible=true;
+    var sHoldUntil=0,sNeedSync=true,sLast=0;
+
+    function sHold(ms){sHoldUntil=Math.max(sHoldUntil,performance.now()+ms);sNeedSync=true}
+    function sPaint(){
+      if(sHint){sHint.textContent=sRun?(sHover?'PAUSED':'AUTO ↻'):'SCROLL →'}
+    }
+    function sClone(node){
+      var c=node.cloneNode(true);
+      c.setAttribute('data-clone','');c.setAttribute('aria-hidden','true');c.tabIndex=-1;
+      return c;
+    }
+    function sBuild(prog){
+      if(sStep>0){return true}
+      var frames=[].slice.call(strip.querySelectorAll('.frame:not([data-clone])'));
+      if(!frames.length){return false}
+      var i,lead=strip.scrollWidth;         /* 未复制前「一组」的宽度 */
+      for(i=frames.length-1;i>=0;i--){strip.insertBefore(sClone(frames[i]),strip.firstChild)}
+      sStep=strip.scrollWidth-lead;         /* 一组的步进宽度（含组尾那道间隙） */
+      if(sStep<=0){return false}
+      var view=strip.clientWidth,guard=0;
+      while(strip.scrollWidth<sStep*2+view&&guard++<6){
+        for(i=0;i<frames.length;i++){strip.appendChild(sClone(frames[i]))}
       }
-    },{passive:false});
-    /* 胶片条每一帧现在是通往影像页的链接。
-       只想把这一条滑过去时，不该被当成点击。 */
-    var stripStart=0;
-    strip.addEventListener('pointerdown',function(){stripStart=strip.scrollLeft});
-    strip.addEventListener('click',function(e){
-      if(Math.abs(strip.scrollLeft-stripStart)>6){e.preventDefault();e.stopPropagation();}
+      /* prog = 重建前在「这一份」里已经走到哪了。按原进度落回去，
+         重建前后看起来是同一个位置，不会突然跳回开头。 */
+      sAcc=sStep+Math.min(Math.max(prog||0,0),sStep-1);
+      strip.scrollLeft=sAcc;strip.classList.add('is-auto');
+      return true;
+    }
+
+    /* 直接量「一组」有多宽（只量真帧，不用把克隆摘掉）。
+       口径与 sBuild 里的 sStep 一致：各帧宽之和 + 帧数 × 间隙
+       （帧之间 n-1 道，再加组尾那一道）。 */
+    function sBase(){
+      var fr=[].slice.call(strip.querySelectorAll('.frame:not([data-clone])'));
+      if(!fr.length){return 0}
+      var w=0,i;
+      for(i=0;i<fr.length;i++){w+=fr[i].getBoundingClientRect().width}
+      var cs=getComputedStyle(strip),gap=parseFloat(cs.columnGap||cs.gap||'0')||0;
+      return Math.round(w+gap*fr.length);
+    }
+
+    /* 懒加载的图逐个到位，进页面那一刻帧宽可能还没定下来，所以布局稳定后重算一次。
+
+       ⚠️ 这里必须带「宽度真变了才重建」的判断，否则会自我触发成死循环：
+       重建会新建一批 <img> 副本 → 它们（从缓存）加载完又各抛一次 load →
+       又调 sSettle → 又重建 …… 结果是位置被反复按回起点，看着像「根本不动」。
+       宽度没变就直接返回，循环自然就断了。 */
+    var sSettleT=0;
+    function sSettle(){
+      clearTimeout(sSettleT);
+      sSettleT=setTimeout(function(){
+        if(!sStep){return}
+        var b=sBase();
+        if(b>0&&Math.abs(b-sStep)<=4){return}
+        var prog=sAcc-sStep;
+        [].slice.call(strip.querySelectorAll('[data-clone]')).forEach(function(n){n.remove()});
+        strip.classList.remove('is-auto');
+        sStep=0;sNeedSync=true;sRun=sBuild(prog);sPaint();
+      },300);
+    }
+    addEventListener('load',sSettle);
+    strip.addEventListener('load',function(e){
+      /* 自己复制出来的副本再抛 load 就忽略掉 */
+      var n=e.target;
+      while(n&&n!==strip){if(n.getAttribute&&n.hasAttribute('data-clone')){return}n=n.parentNode}
+      sSettle();
     },true);
+
+    /* 滚轮**不接管**（按用户要求）：光标停在胶片条上时，滚轮照常竖着滚页面，
+       不再把竖向滚轮改成横向滑。 */
+    strip.addEventListener('pointerenter',function(e){if(e.pointerType==='mouse'){sHover=true;sPaint()}});
+    strip.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse'){sHover=false;sHold(400);sPaint()}});
+
+    var sDownX=0,sDownL=0,sDown=false,sMoved=false;
+    strip.addEventListener('pointerdown',function(e){
+      sHold(2600);sDown=true;sMoved=false;sDownX=e.clientX;sDownL=strip.scrollLeft;
+    },{passive:true});
+    strip.addEventListener('pointermove',function(e){
+      if(sDown&&Math.abs(e.clientX-sDownX)>8){sMoved=true}
+    },{passive:true});
+    strip.addEventListener('pointerup',function(){sDown=false});
+    strip.addEventListener('pointercancel',function(){sDown=false});
+    /* 捕获阶段拦：真拖过（含触屏原生滑动把位置挪了）就不算点击；
+       只是点一下某张，照常跳到影像页那一张。键盘回车产生的 click 没有指针轨迹
+       （e.detail===0），绝不能拦，否则键盘用户点不动。 */
+    strip.addEventListener('click',function(e){
+      if(e.detail!==0&&(sMoved||Math.abs(strip.scrollLeft-sDownL)>8)){
+        e.preventDefault();e.stopPropagation();
+      }
+      sMoved=false;
+    },true);
+
+    if('IntersectionObserver' in window){
+      new IntersectionObserver(function(es){
+        es.forEach(function(e){sVisible=e.isIntersecting});
+      },{threshold:0}).observe(strip);
+    }
+    document.addEventListener('visibilitychange',function(){if(document.hidden){sLast=0}});
+
+    addEventListener('resize',sSettle);
+
+    if(sReduce){sPaint()}                 /* 系统开了「减少动态效果」就不自动滑 */
+    else{
+      sRun=sBuild();sPaint();
+      requestAnimationFrame(function sTick(t){
+        if(!sLast){sLast=t}
+        var dt=Math.min(t-sLast,64);sLast=t;   /* 切回标签页时别一次跳很远 */
+        if(sRun&&sVisible&&!sHover&&t>sHoldUntil){
+          if(sNeedSync){sAcc=strip.scrollLeft;sNeedSync=false}
+          sAcc+=dt*S_SPEED;
+          if(sAcc>=sStep*2){sAcc-=sStep}       /* 无缝回绕 */
+          strip.scrollLeft=sAcc;
+        }
+        requestAnimationFrame(sTick);
+      });
+    }
   }
 
   /* ---------- 影像页：横向滑动画廊 ----------
@@ -342,5 +475,10 @@
   }
 })();
 </script>
+{{- /* 背景乐挂件：全站每页都在，翻页接着放 */ -}}
+{{ partial "capsule-bgm.html" . }}
+<script src="{{ `js/capsule-bgm.js` | relURL }}" defer></script>
+{{- /* 内容保护：复制门 + 页脚声明（无 capsuleGuardPass 时整块不输出） */ -}}
+{{ partial "capsule-protect.html" . }}
 </body>
 </html>
