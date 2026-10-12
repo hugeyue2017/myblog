@@ -1,10 +1,15 @@
 /* ==========================================================
    背景乐挂件（全站）—— 张悬《宝贝》
-   · 进任何一页都试着自动播放；被浏览器拦下时，等第一次点按再起播
-   · 唱片在转 = 正在放；点一下 = 暂停 / 接着放
-   · **跨页面接着放**：站点是多页的，每点一个链接都会重新加载。
-     用 sessionStorage 记住「放到第几秒」和「你上次是开还是关」，
-     翻页时接着上一页的进度往下走，而不是每页从头再来一遍。
+   · **进任何一页都自动起播**，点一下按钮才暂停 / 接着放
+     （2026-10-12 用户要求。原先记着「你上次关了」，于是点过一次暂停之后，
+      每次再进站都安静 —— 那条记忆已经去掉。暂停只在站内翻页之间保持。）
+   · 自动播放被浏览器拦下时：第一次点按页面任意处就起播。
+     真·自动播放在「没有用户手势的新文档」里一定会被拒，这是 Chrome 的策略，
+     绕不过去；能做的只是把「要用户动一下」压缩到「随手动一下」。
+   · **跨页不中断**：站内翻页走局部导航（capsule-pjax.js），文档不重载、
+     <audio> 自始至终是同一个元素。万一退化成整页跳转，sessionStorage
+     还记着「放到第几秒」，下一页接着往下走。
+   · 位置：右上角（原为右下角）；顶栏滑下来时自动让位（body.nav-show）
    · 音频文件缺失（404）时挂件自己藏起来，不留一个坏按钮
    · 不依赖任何库
    ========================================================== */
@@ -27,9 +32,8 @@
 
   var VOL = 0.55;                          // 目标音量（0~1）
   var RING_C = 2 * Math.PI * 24.5;         // 与 CSS / SVG 里的 r 对应
-  /* K_OFF 只在「你亲手按了暂停」时才写 —— 于是翻页时能分清两种情况：
-     ① 你关掉了 → 别自己响起来；② 播放被浏览器拦了 → 下一页继续争取自动放。 */
-  var K_OFF = 'capBgm.off', K_T = 'capBgm.t';
+  /* 只记进度，不记「开还是关」—— 每次进站都该响起来（用户 2026-10-12 要求）。 */
+  var K_T = 'capBgm.t';
   var fadeTimer = 0, metaTimer = 0, guard = 0, lastSave = 0;
   var armed = false, live = false, dead = false, backTo = false;
 
@@ -96,7 +100,6 @@
     if (!p || !p.then) {                   // 老浏览器：当成功处理
       live = true; box.classList.remove('needs-tap');
       fade(VOL, 1400); paint(); showMeta(7000);
-      store(K_OFF, null);
       return;
     }
     p.then(function () {
@@ -105,13 +108,12 @@
       fade(VOL, 1400);
       paint();
       showMeta(7000);
-      store(K_OFF, null);                  // 放起来了 → 取消「已关闭」标记，翻页继续放
     })['catch'](function () {
       armTap();                            // 被浏览器拦下 → 等用户动一下再放
     });
   }
-  function stop(manual) {
-    if (manual) { store(K_OFF, '1'); saveTime(); }   // 你亲手关的：翻页也别自己响起来
+  function stop() {
+    saveTime();                            // 记住放到第几秒，整页跳转时接着走
     fade(0, 260, function () { audio.pause(); });
   }
 
@@ -135,7 +137,7 @@
 
   btn.addEventListener('click', function () {
     if (dead) return;
-    if (audio.paused) start(); else stop(true);
+    if (audio.paused) start(); else stop();
   });
 
   /* ---------- 音频自己的事件 ---------- */
@@ -169,11 +171,25 @@
     if (audio.readyState < 1 && audio.networkState !== 2) kill();
   }, 9000);
 
+  /* ---------- 右上角：顶栏滑下来时让位 ----------
+     挂件在右上角，而固定顶栏（.topbar）也占着右上角 —— 它平时收起，
+     滚动过 180px 才滑下来。顶栏的 class 只由 baseof 里那段滚动脚本改，
+     这里跟着同步 body.nav-show，具体让多少由 CSS 决定。 */
+  var tbar = document.getElementById('topbar');
+  function syncNav() {
+    if (!tbar) return;
+    document.body.classList.toggle('nav-show', tbar.classList.contains('show'));
+  }
+  if (tbar) {
+    addEventListener('scroll', syncNav, { passive: true });
+    syncNav();
+  }
+
   /* ---------- 切走时停一下，切回来接着放 ---------- */
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       backTo = live && !audio.paused;
-      if (backTo) stop(false);
+      if (backTo) stop();
     } else if (backTo) {
       backTo = false;
       start();
@@ -182,11 +198,10 @@
   addEventListener('pagehide', saveTime);  // 翻页前把进度带走
 
   /* ---------- 启动 ----------
-     没被手动关过就自动放（第一次进站、或你上次是开着走的）；
-     你上次亲手按了暂停 → 这次保持安静，等你点。 */
+     进站就试着自动起播 —— 不看你上次是不是亲手关过。 */
   setRing(0);
   paint();
-  if (load(K_OFF) !== '1') start();
+  start();
 
   /* 调试钩子：验收脚本用，正常使用无感 */
   window.__capBgm = { box: box, audio: audio, start: start, stop: stop, saveTime: saveTime };
