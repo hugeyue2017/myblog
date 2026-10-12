@@ -1,5 +1,20 @@
 {
   "env": {
     "HUGO_VERSION": "0.146.0"
-  }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noai, noimageai"
+        },
+        {
+          "key": "tdm-reservation",
+          "value": "1"
+        }
+      ]
+    }
+  ]
 }

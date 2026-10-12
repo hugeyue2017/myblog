@@ -1,7 +1,91 @@
+{{- /* 由 Hugo 生成：source 是 layouts/robots.txt（enableRobotsTXT = true）。 */ -}}
+# ==============================================================
+# 宝贝的时间胶囊 · www.minipiggy.top
+#
+# 这里画两条线：
+#   ① 普通搜索引擎（Googlebot / Bingbot / Baiduspider）**照常收录** ——
+#      博客是要给人看的，把他们一起挡掉等于把自己从搜索里删掉。
+#   ② 生成式 AI 的抓取与训练用途 —— 一律谢绝。
+#
+# 同一个意思在 HTTP 响应头里也写了一遍（见 vercel.json，HTTP 层优先）：
+#   X-Robots-Tag: noai, noimageai
+#   tdm-reservation: 1     ← 欧盟 DSM 第 4 条「文本与数据挖掘」保留声明
+# ==============================================================
+
+# ---------- 生成式 AI / 大模型爬虫：全部拒绝 ----------
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: OAI-SearchBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+User-agent: ImagesiftBot
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Timpibot
+Disallow: /
+
+User-agent: ai2bot
+Disallow: /
+
+User-agent: iaskspider
+Disallow: /
+
+# ---------- 其余爬虫：交回 Hugo 的常规逻辑 ----------
 User-agent: *
 {{- if hugo.IsProduction | or (eq site.Params.env "production") }}
-Disallow:
+Allow: /
 {{- else }}
 Disallow: /
 {{- end }}
+Content-Signal: search=yes, ai-train=no, ai-input=no
+
 Sitemap: {{ "sitemap.xml" | absURL }}

@@ -1,0 +1,52 @@
+{{- /* ==========================================================
+   capsule-protect.html —— 内容保护（全站）
+   ----------------------------------------------------------
+   放在 baseof.html 的 </body> 之前，每页都会输出。
+
+   它做的是「复制门」：按 Ctrl/Cmd+C、剪切、右键、拖图片、
+   按 F12 / Ctrl+U / Ctrl+S 时，弹一个居中的密码框；
+   密码对了（hugo.toml 的 capsuleGuardPass）本次会话内不再拦。
+
+   ⚠️ 这是「劝退层」，不是加密 —— 别把它当成安全边界：
+      · 网页源码本来就随 HTML 一起发到浏览器，任何在浏览器里
+        跑得起来的东西，都一定能被看到；能挡住的是「顺手就复制」
+        和「右键另存」，挡不住存心要拿的人。
+      · 爬虫（包括各种 AI 抓取器）是直接发 HTTP 请求拿 HTML 的，
+        **根本不执行这段 JS**，所以它对 AI 抓取零作用。
+        真正对「守规矩的爬虫」有效的是声明层：
+          layouts/robots.txt      —— 按 User-agent 点名拒绝
+          vercel.json 的响应头     —— X-Robots-Tag / tdm-reservation
+      关闭办法：把 hugo.toml 里的 capsuleGuardPass 删掉（或置空）。
+   ========================================================== */ -}}
+{{- with site.Params.capsuleGuardPass -}}
+{{- /* 密码走 data- 属性传给脚本，不写在 <script> 里：
+       Go 的 html/template 在 script 上下文会把值再 JS 转义一次
+       （jsonify 的结果会变成 "\"5726150\""，校验永远不通过），
+       属性上下文只做 HTML 转义，dataset 读回来是原值。
+
+       ⚠️ 仍然提醒一句：这是明文。看得懂源码的人直接就能找到它 ——
+          这层是"劝退"，不是加密，别拿它当安全边界。 */ -}}
+<div class="cguard" id="cguard" hidden
+     data-pass="{{ . }}"
+     data-note="{{ site.Params.capsuleGuardNote | default "" }}">
+  <div class="cguard-scrim" data-cg-close="1"></div>
+  <div class="cguard-card" role="dialog" aria-modal="true" aria-labelledby="cgTitle" aria-describedby="cgText">
+    <span class="cguard-lock" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.6" width="16" height="9.9" rx="2.5"/><path d="M8 10.6V7.7a4 4 0 0 1 8 0v2.9"/><circle cx="12" cy="15.4" r="1.25" fill="currentColor" stroke="none"/></svg>
+    </span>
+    <h2 class="cguard-title" id="cgTitle">这是一封私人的信</h2>
+    <p class="cguard-text" id="cgText">这里记着爸爸妈妈想留给小猪咪的话。<br>要复制内容，请输入访问密码。</p>
+    <form class="cguard-form" id="cgForm" autocomplete="off" novalidate>
+      <input class="cguard-input" id="cgInput" type="password" inputmode="numeric" autocomplete="off"
+             placeholder="访问密码" aria-label="访问密码">
+      <button class="cguard-go" type="submit">解 锁</button>
+    </form>
+    <p class="cguard-err" id="cgErr" role="alert" aria-live="polite"></p>
+    <div class="cguard-foot">
+      <span class="cguard-note" id="cgNote"></span>
+      <button class="cguard-x" type="button" data-cg-close="1">算了，只看看</button>
+    </div>
+  </div>
+</div>
+<script src="{{ `js/capsule-protect.js` | relURL }}" defer></script>
+{{- end -}}

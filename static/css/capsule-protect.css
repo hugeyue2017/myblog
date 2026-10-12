@@ -1,0 +1,168 @@
+/* ==========================================================
+   capsule-protect.css —— 内容保护（全站）
+   ----------------------------------------------------------
+   ① .cguard*    复制密码门弹窗（居中卡片，深浅色自动跟随）
+   ② .foot-legal 页脚版权声明
+   配色一律走 capsule.css 的变量，并各自带浅色兜底 ——
+   即使单独引这个文件也不会变成无色。
+   层级：本文件是 z-index:90，高于顶栏(60)/进度条(70)/背景乐挂件(55)。
+   ========================================================== */
+
+.cguard,
+.cguard *{ box-sizing: border-box }
+
+.cguard{
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif);
+  font-size: 14px; line-height: 1.7;
+}
+.cguard[hidden]{ display: none }
+
+.cguard-scrim{
+  position: absolute; inset: 0;
+  background: rgba(26,24,21,.44);
+  -webkit-backdrop-filter: blur(7px) saturate(1.1);
+          backdrop-filter: blur(7px) saturate(1.1);
+  animation: cg-fade .26s ease both;
+}
+:root[data-theme="dark"] .cguard-scrim{ background: rgba(4,3,2,.62) }
+
+.cguard-card{
+  position: relative;
+  width: min(430px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 34px 30px 20px;
+  border-radius: 22px;
+  background: var(--paper, #FAF7F2);
+  border: 1px solid var(--rule, #DAD2C6);
+  box-shadow: 0 26px 70px rgba(26,24,21,.26), 0 2px 8px rgba(26,24,21,.08);
+  text-align: center;
+  animation: cg-pop .34s cubic-bezier(.22,1,.36,1) both;
+}
+:root[data-theme="dark"] .cguard-card{ box-shadow: 0 30px 76px rgba(0,0,0,.66), 0 0 0 1px rgba(255,255,255,.03) }
+
+@keyframes cg-fade{ from{ opacity: 0 } to{ opacity: 1 } }
+@keyframes cg-pop{ from{ opacity: 0; transform: translateY(14px) scale(.97) } to{ opacity: 1; transform: none } }
+@keyframes cg-shake{
+  10%,90%{ transform: translateX(-3px) }
+  20%,80%{ transform: translateX(4px) }
+  30%,50%,70%{ transform: translateX(-6px) }
+  40%,60%{ transform: translateX(6px) }
+}
+
+.cguard-lock{
+  display: flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; margin: 0 auto 16px;
+  border-radius: 14px;
+  background: var(--paper-2, #F3EFE7);
+  border: 1px solid var(--rule, #DAD2C6);
+  color: var(--accent, #C0402C);
+}
+.cguard-lock svg{ width: 22px; height: 22px; display: block }
+
+.cguard-title{
+  margin: 0 0 10px;
+  font-family: var(--serif, "Songti SC", "Noto Serif SC", Georgia, serif);
+  font-size: 21px; font-weight: 600; letter-spacing: .02em;
+  color: var(--ink, #1A1815);
+}
+.cguard-text{
+  margin: 0 0 22px;
+  font-size: 13.5px; line-height: 1.9;
+  color: var(--ink-soft, #5C554B);
+}
+
+.cguard-form{ display: flex; flex-direction: column; gap: 10px; margin: 0 0 12px }
+.cguard-form.shake{ animation: cg-shake .46s cubic-bezier(.36,.07,.19,.97) both }
+
+.cguard-input{
+  width: 100%; height: 50px; padding: 0 16px;
+  border-radius: 13px;
+  border: 1px solid var(--rule, #DAD2C6);
+  background: var(--paper-2, #F3EFE7);
+  color: var(--ink, #1A1815);
+  font-family: inherit;
+  font-size: 16px;                       /* 16px：iOS 上小于它会把页面自动放大 */
+  letter-spacing: .3em; text-align: center; text-indent: .3em;
+  transition: border-color .22s, box-shadow .22s, background .22s;
+}
+.cguard-input::placeholder{ letter-spacing: .08em; text-indent: 0; color: var(--ink-faint, #6F6659) }
+.cguard-input:focus{
+  outline: none;
+  border-color: var(--accent, #C0402C);
+  background: var(--paper, #FAF7F2);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(192,64,44,.24));
+}
+
+.cguard-go{
+  height: 50px; border-radius: 13px;
+  border: 1px solid transparent;
+  background: var(--accent, #C0402C);
+  color: #FBF7F1;
+  font-family: inherit;
+  font-size: 15px; font-weight: 600; letter-spacing: .14em;
+  cursor: pointer;
+  transition: transform .2s, filter .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+:root[data-theme="dark"] .cguard-go{ color: #17140F }   /* 深色下 accent 偏亮，改用墨色字 */
+.cguard-go:hover{ filter: brightness(1.07) }
+.cguard-go:active{ transform: scale(.985) }
+.cguard-go:focus-visible{ outline: 2px solid var(--accent, #C0402C); outline-offset: 3px }
+
+.cguard-err{
+  margin: 0 0 8px; min-height: 17px;
+  font-size: 12.5px; letter-spacing: .04em;
+  color: var(--accent, #C0402C);
+  opacity: 0; transition: opacity .2s;
+}
+.cguard-err.on{ opacity: 1 }
+
+.cguard-foot{
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule-soft, #E7E0D4);
+}
+.cguard-note{
+  font-size: 11.5px; line-height: 1.5; text-align: left;
+  color: var(--ink-faint, #6F6659);
+}
+.cguard-x{
+  flex: 0 0 auto;
+  padding: 8px 12px; border-radius: 10px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--ink-soft, #5C554B);
+  font-family: inherit; font-size: 12.5px; white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.cguard-x:hover{ background: var(--paper-2, #F3EFE7); color: var(--ink, #1A1815) }
+.cguard-x:focus-visible{ outline: 2px solid var(--accent, #C0402C); outline-offset: 2px }
+
+@media (max-width: 520px){
+  .cguard{ padding: 18px }
+  .cguard-card{ padding: 28px 22px 16px; border-radius: 19px }
+  .cguard-title{ font-size: 19px }
+  .cguard-text{ font-size: 13px }
+  .cguard-foot{ flex-direction: column; align-items: stretch; gap: 6px }
+  .cguard-note{ text-align: center }
+  .cguard-x{ text-align: center }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cguard-scrim, .cguard-card{ animation: none }
+  .cguard-form.shake{ animation: none }
+}
+
+/* ---------- ② 页脚版权声明 ---------- */
+.foot-legal{
+  margin-top: 20px; padding-top: 14px;
+  border-top: 1px solid var(--rule-soft, #E7E0D4);
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif);
+  font-size: 11px; letter-spacing: .04em; line-height: 1.8;
+  color: var(--ink-faint, #6F6659);
+}
+.foot-legal b{ font-weight: 600; color: var(--ink-soft, #5C554B) }

@@ -35,6 +35,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ if .IsHome }}{{ $siteTitle }}{{ else }}{{ $pgTitle }} · {{ $siteTitle }}{{ end }}</title>
 <meta name="description" content="{{ $desc }}">
+{{- /* 谢绝生成式 AI 抓取/训练。Google 只认 robots.txt 里的 Google-Extended
+       （见 layouts/robots.txt），这里的 noai/noimageai 是给认得这套约定的
+       爬虫看的，不认识的会直接忽略，不影响正常收录。 */}}
+<meta name="robots" content="noai, noimageai">
+<meta name="copyright" content="{{ site.Title }}">
 <link rel="canonical" href="{{ .Permalink }}">
 <meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}">
 <meta property="og:title" content="{{ if .IsHome }}{{ $siteTitle }}{{ else }}{{ $pgTitle }}{{ end }}">
@@ -68,6 +73,7 @@
 </script>
 <link rel="stylesheet" href="{{ `css/capsule.css` | relURL }}">
 <link rel="stylesheet" href="{{ `css/capsule-bgm.css` | relURL }}">
+<link rel="stylesheet" href="{{ `css/capsule-protect.css` | relURL }}">
 {{- with site.Params.capsuleFavicon }}<link rel="icon" href="{{ . | relURL }}">{{ end }}
 {{- /* 关掉 JS 时也要能读到正文 —— .rv 默认是 opacity:0，靠脚本淡入；
        影像页的幻灯片同理（不在中心的那几张本来是压暗的）。 */}}
@@ -109,6 +115,10 @@
     <div class="foot">
       <div class="sign">{{ site.Params.capsuleFooter | default (printf "写给你<br>的时间胶囊。") | safeHTML }}</div>
       <div class="note">{{ site.Params.capsuleFooterNote | default (printf "%s<br>每一篇都留给未来的你" (replaceRE `^https?://` "" site.BaseURL)) | safeHTML }}</div>
+    </div>
+    <div class="foot-legal">
+      <b>© {{ now.Year }} {{ site.Title }}</b> · 私人记录，谢绝抓取、转载与任何形式的模型训练。<br>
+      robots.txt / HTTP 响应头已声明禁止 AI 训练用途。
     </div>
   </div>
 </footer>
@@ -346,5 +356,7 @@
 {{- /* 背景乐挂件：全站每页都在，翻页接着放 */ -}}
 {{ partial "capsule-bgm.html" . }}
 <script src="{{ `js/capsule-bgm.js` | relURL }}" defer></script>
+{{- /* 内容保护：复制门 + 页脚声明（无 capsuleGuardPass 时整块不输出） */ -}}
+{{ partial "capsule-protect.html" . }}
 </body>
 </html>
