@@ -57,9 +57,15 @@
       t: slides[n].getAttribute('data-t') || '',
       n: slides[n].getAttribute('data-n') || '',
       d: slides[n].getAttribute('data-d') || '',
-      /* 灯箱优先用 data-full（模板生成的 1600 宽去 EXIF 副本），
+      /* 灯箱优先用 data-full（模板生成的最大一张 Hugo 副本），
          没有才退回到页面上那张。 */
-      src: slides[n].getAttribute('data-full') || (im ? im.getAttribute('src') : '')
+      src: slides[n].getAttribute('data-full') || (im ? im.getAttribute('src') : ''),
+      /* 候选集：灯箱也走 srcset，手机按 sizes 挑得比 1600 小一档，
+         少占一半以上内存（手机端「白框无图」的两大成因之一）。 */
+      set: slides[n].getAttribute('data-fullset') || '',
+      /* 原图宽高：写进 <img width/height>，图片没到位时框的尺寸和比例就是对的。 */
+      w: parseInt(slides[n].getAttribute('data-fw'), 10) || 0,
+      h: parseInt(slides[n].getAttribute('data-fh'), 10) || 0
     });
     hov.push(1);
   }
@@ -214,6 +220,28 @@
     el.addEventListener('mouseleave', function () { hov[i] = 1; el.classList.remove('is-hot'); });
   });
 
+  /* 照片带兜底：某一张万一没载出来（例如 WebP 在这台机器上解不出来、
+     或者那道副本取不到），把 <picture> 里的 <source> 撤掉 ——
+     浏览器就会退回 <img src> 那个 JPEG 副本。
+     ⚠️ 少了这一步，「<source> 失败」是**不会**自动退到 src 的，
+     那条照片就永远停在一个空框里（.frame 是纸白底 → 看着就是白框）。 */
+  slides.forEach(function (el) {
+    var im = el.querySelector('img');
+    if (!im) return;
+    im.addEventListener('error', function () {
+      if (im.getAttribute('data-fb')) return;              /* 每张只兜一次 */
+      im.setAttribute('data-fb', '1');
+      var pic = im.parentNode;
+      if (pic && pic.tagName === 'PICTURE') {
+        var ss = [].slice.call(pic.querySelectorAll('source'));
+        for (var k = 0; k < ss.length; k++) pic.removeChild(ss[k]);
+      }
+      im.removeAttribute('srcset');
+      var back = im.getAttribute('src');
+      if (back) im.src = back;                             /* 重新走一遍选源 */
+    });
+  });
+
   /* ================= 渲染状态（逐帧缓动） ================= */
   var vis = [], memo = [];
   for (var v0 = 0; v0 < N; v0++) { vis.push({ o: 0, s: 1, h: 1 }); memo.push(''); }
@@ -306,20 +334,73 @@
     if (nowTtl) nowTtl.textContent = INFO[activeIdx].t;
     if (nowSub) nowSub.textContent = subOf(activeIdx);
     for (var i = 0; i < ticks.length; i++) ticks[i].classList.toggle('on', i === activeIdx);
+    /* 换到哪张就顺手把哪张的大图预热进缓存（点开即见，不用等那一下） */
+    prewarm(activeIdx);
   }
 
-  /* ================= 灯箱 ================= */
+  /* ================= 灯箱 =================
+     ⚠️ 2026-10-13 重写，针对「手机上灯箱只有白框、图片是空的」：
+       · 图片改由 load 事件驱动显示（.is-ready），没解码完就全透明 ——
+         原来靠 .lb.is-open 直接显示，图没好就先露出 img 的纸白背景 = 白框。
+       · 显式写上 width/height（取原图尺寸，只用来定比例），框的尺寸和比例
+         在图片到位前就是对的。
+       · 灯箱也走 srcset，手机挑得比 1600 小一档，位图小一半以上。
+       · 失败三级兜底：破缓存重试 → 退回照片带上已经下过的那张 → 写明"没载出来"。
+       · 关灯箱时松掉这张大图（removeAttribute('src')），别一直攥着位图不放。 */
   var lb = root.querySelector('#lb');
   var lbImg = root.querySelector('#lbImg');
+  var lbMsg = root.querySelector('#lbMsg');
   var lbNum = root.querySelector('#lbNum');
   var lbTtl = root.querySelector('#lbTtl');
   var lbSub = root.querySelector('#lbSub');
-  var curLB = 0, lbOpen = false;
+  var curLB = 0, lbOpen = false, lbTry = 0;
+
+  function lbNote(s) {
+    if (!lbMsg) return;
+    if (s) { lbMsg.textContent = s; lbMsg.hidden = false; }
+    else { lbMsg.textContent = ''; lbMsg.hidden = true; }
+  }
+  function lbReady(on) {
+    if (!lbImg) return;
+    if (on) lbImg.classList.add('is-ready');
+    else lbImg.classList.remove('is-ready');
+  }
+  /* 照片带上那一张（浏览器早就下过的 webp）—— 最后一层兜底用 */
+  function bandSrc(i) {
+    var s = slides[i];
+    if (!s) return '';
+    var im = s.querySelector('img');
+    return im ? (im.currentSrc || im.getAttribute('src') || '') : '';
+  }
+  /* 把一张大图塞进 lbImg。bust 非空时走破缓存重试（不带 srcset，免得又挑回同一份）。 */
+  function lbLoad(it, bust) {
+    if (!lbImg || !it) return;
+    var src = it.src;
+    if (!src) { lbNote('这张没有大图副本'); return; }
+    if (bust) src += (src.indexOf('?') > -1 ? '&' : '?') + 'cap=' + bust;
+    if (it.set && !bust) {
+      lbImg.setAttribute('srcset', it.set);
+      lbImg.setAttribute('sizes', 'min(88vw,1080px)');
+    } else {
+      lbImg.removeAttribute('srcset');
+      lbImg.removeAttribute('sizes');
+    }
+    if (it.w) lbImg.setAttribute('width', it.w);
+    if (it.h) lbImg.setAttribute('height', it.h);
+    lbImg.src = src;
+    /* 兜底：图片已经在缓存里、同步就绪时，load 事件可能在我们挂好状态前就过去了。
+       补一次判断，免得它卡在「永远全透明」（CSS 里没 ready 就是 opacity:0）。 */
+    if (lbImg.complete && lbImg.naturalWidth > 0) lbReady(true);
+  }
 
   function openLB(i) {
     if (!lb) return;
     curLB = ((i % N) + N) % N;
-    lbImg.src = INFO[curLB].src;
+    var it = INFO[curLB];
+    lbTry = 0;
+    lbReady(false);
+    lbNote('');
+    lbLoad(it, 0);
     lbImg.alt = INFO[curLB].t;
     lbNum.textContent = pad(curLB + 1) + ' / ' + pad(N);
     lbTtl.textContent = INFO[curLB].t;
@@ -328,13 +409,62 @@
     lbOpen = true;
     if (history.replaceState) history.replaceState(null, '', '#p' + (curLB + 1));
   }
-  function closeLB() { lb.classList.remove('is-open'); lbOpen = false; }
+  function closeLB() {
+    lb.classList.remove('is-open');
+    lbOpen = false;
+    lbReady(false);
+    lbNote('');
+    /* 松开这张大图。下次再点开走 HTTP 缓存，几乎瞬间 ——
+       但位图不再一直占着手机那点内存。 */
+    if (lbImg) {
+      lbImg.removeAttribute('src');
+      lbImg.removeAttribute('srcset');
+      lbImg.removeAttribute('sizes');
+    }
+  }
+
+  if (lbImg) {
+    lbImg.addEventListener('load', function () { lbReady(true); lbNote(''); });
+    lbImg.addEventListener('error', function () {
+      if (!lbImg.getAttribute('src')) return;      /* 关闭时被我们清空的，不是真失败 */
+      var it = INFO[curLB];
+      if (!it) { lbNote('图片没能载出来'); return; }
+      if (lbTry === 0) { lbTry = 1; lbNote('正在重试…'); lbLoad(it, String(Date.now())); return; }
+      if (lbTry === 1) {
+        var b = bandSrc(curLB);
+        if (b && b !== lbImg.getAttribute('src')) {
+          lbTry = 2;
+          lbNote('大图取不到，换成列表里那张…');
+          lbImg.removeAttribute('srcset'); lbImg.removeAttribute('sizes');
+          lbImg.src = b;
+          return;
+        }
+      }
+      lbNote('这张图没能载出来，关掉再点一次试试');
+    });
+  }
 
   if (lb) {
     root.querySelector('#lbX').addEventListener('click', closeLB);
     root.querySelector('#lbPrev').addEventListener('click', function (e) { e.stopPropagation(); openLB(curLB - 1); });
     root.querySelector('#lbNext').addEventListener('click', function (e) { e.stopPropagation(); openLB(curLB + 1); });
     lb.addEventListener('click', function (e) { if (e.target === lb) closeLB(); });
+  }
+
+  /* 预热：当前居中的这张，把它的大图先抓进 HTTP 缓存，
+     点开就不用等那一下（手机网络上这一下最容易被看成「白框」）。 */
+  var warmed = {};
+  function prewarm(i) {
+    var p = INFO[((i % N) + N) % N];
+    if (!p || !p.src || warmed[p.src]) return;
+    warmed[p.src] = 1;
+    /* 必须和灯箱用同一套 srcset/sizes，否则预热的是 1600、点开却要 1100，
+       白白多下一次（等于没预热）。 */
+    try {
+      var z = new Image();
+      if (p.set) { z.setAttribute('srcset', p.set); z.setAttribute('sizes', 'min(88vw,1080px)'); }
+      z.src = p.src;
+    } catch (e) {}
   }
 
   /* ================= 键盘 ================= */

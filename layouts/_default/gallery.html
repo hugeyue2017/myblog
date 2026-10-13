@@ -26,18 +26,35 @@
   {{- $res := resources.Get (strings.TrimPrefix "/" .img) -}}
   {{- $ar := "1.000" -}}
   {{- $full := "" -}}
+  {{- $fullset := "" -}}
+  {{- $fw := 0 -}}
+  {{- $fh := 0 -}}
   {{- if and $res $res.Width $res.Height -}}
     {{- $ar = printf "%.3f" (math.Max 0.60 (math.Min 1.48 (div (float $res.Width) (float $res.Height)))) -}}
-    {{- /* 灯箱大图：**必须**经过 Hugo 处理才会剥掉 EXIF/GPS。
-           宽于 1600 的缩到 1600；窄图不能走 RelPermalink ——
-           那等于把原图连同元数据一起发出去。用 Process 只重编码、不改尺寸。
-           （cond 会把两个分支都求值，所以这里用 if。） */ -}}
-    {{- $big := $res.Process "q86 Lanczos" -}}
-    {{- if gt $res.Width 1600 -}}{{- $big = $res.Resize "1600x q86 Lanczos" -}}{{- end -}}
-    {{- $full = $big.RelPermalink -}}
+    {{- $fw = $res.Width -}}
+    {{- $fh = $res.Height -}}
+    {{- /* 灯箱大图 = 一组候选副本（Hugo 处理过，EXIF/GPS 不会跟着发出去）。
+           ⚠️ 2026-10-13 起不再只给「一张 1600」：
+             ① 手机屏幕只有 ~400 CSS px 宽，按 sizes 挑 1100 就绰绰有余；
+                硬塞 1600×2262 的 JPEG，解码后是 ~14MB 单张位图，
+                安卓机上扛不住会整张画不出来 —— 表现就是「灯箱里只有白框、没有图」。
+             ② 候选集同时是「加载失败时的退路」：浏览器自己会挑下一档。
+           为什么不能用 RelPermalink 直出原图：那样 EXIF/GPS 会一起公开。 */ -}}
+    {{- $cand := slice -}}
+    {{- range (slice 480 760 1100 1600) -}}
+      {{- if ge $res.Width . -}}
+        {{- $cand = $cand | append (printf "%s %dw" ($res.Resize (printf "%dx q86 Lanczos" .)).RelPermalink .) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if not $cand -}}
+      {{- $cand = slice (printf "%s %dw" ($res.Resize (printf "%dx q86 Lanczos" $res.Width)).RelPermalink $res.Width) -}}
+    {{- end -}}
+    {{- $fullset = delimit $cand ", " -}}
+    {{- $full = index (split (index $cand (sub (len $cand) 1)) " ") 0 -}}
   {{- end -}}
   {{- $items = $items | append (dict
-        "img" .img "title" .title "note" .note "date" .date "ar" $ar "full" $full) -}}
+        "img" .img "title" .title "note" .note "date" .date "ar" $ar
+        "full" $full "fullset" $fullset "fw" $fw "fh" $fh) -}}
 {{- end -}}
 {{- $n := len $items -}}
 
@@ -62,15 +79,22 @@
       {{- range $i, $p := $items }}
       <figure class="slide" id="p{{ add $i 1 }}" data-i="{{ $i }}"
               data-t="{{ $p.title }}" data-n="{{ $p.note }}" data-d="{{ $p.date }}"
-              {{- with $p.full }} data-full="{{ . }}"{{ end }}
+              {{- with $p.full }} data-full="{{ . }}" data-fullset="{{ $p.fullset }}" data-fw="{{ $p.fw }}" data-fh="{{ $p.fh }}"{{ end }}
               style="--ar:{{ $p.ar }}">
         <div class="frame">
+          {{- /* 照片带上每一张实际只显示成 (--h 最高 300px) × 画幅比，最宽也就 ~444 CSS px。
+                 按 80vw 挑会一路挑到 1100 宽的副本 —— 21 张加起来是近百 MB 的解码位图，
+                 手机上白白占着内存。70vw 仍有 ~1.7 倍像素密度，肉眼看不出来，内存减半。 */ -}}
+          {{- /* loading 一律 eager。原来前 8 张 eager、其余 lazy，看着合理，其实白搭：
+                 照片带是「全部绝对定位在 left:50% 再用 transform 平移」，解析时它们
+                 全都在视口正中，浏览器判定「全都不用等」，实际全都立刻加载；反倒多了一种
+                 「某些版本下被判成永不进入视口、于是永不加载」的坑。 */ -}}
           {{- partial "capsule-img.html" (dict
                 "src" $p.img
                 "alt" ($p.title | default "胡知一")
-                "sizes" "(max-width:640px) 80vw, 640px"
+                "sizes" "(max-width:640px) 70vw, 640px"
                 "max" 1600
-                "loading" (cond (lt $i 8) "eager" "lazy")) -}}
+                "loading" "eager") -}}
         </div>
       </figure>
       {{- end }}
@@ -96,7 +120,9 @@
   <button class="lb-nav lb-prev" id="lbPrev" aria-label="上一张">←</button>
   <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">→</button>
   <div class="lb-in">
-    <img id="lbImg" alt="">
+    <img id="lbImg" alt="" decoding="async">
+    {{- /* 载入中 / 重试中 / 最终没载出来，都写在这儿 —— 别让用户对着白框猜。 */}}
+    <p class="lb-msg" id="lbMsg" hidden></p>
     <div class="lb-cap">
       <span class="num" id="lbNum"></span>
       <span class="ttl" id="lbTtl"></span>

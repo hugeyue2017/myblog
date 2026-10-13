@@ -176,23 +176,48 @@
 #cap-gallery .hint .dots i{width:15px;height:1px;background:rgba(241,240,236,.4)}
 
 /* ---------- 灯箱 ---------- */
+/* ⚠️ 2026-10-13 「手机上灯箱只有白框、没有图」这一版修了三处，都别改回去：
+   ① 去掉 backdrop-filter（原来 blur(3px)）。背景本来就是 94% 不透明的近黑，
+      模糊几乎看不出来；但它是安卓 Chrome 上很有名的坑 —— 固定定位的全屏层
+      一旦带 backdrop-filter，层里的 <img> 在部分机型上整张画不出像素，
+      而背景和边框照画（因为那是另一趟绘制），于是「白框 + 空图」。
+      桌面端完全正常，所以只在真机上才暴露。
+   ② transition 里不再过渡 visibility：安卓上「边淡入边切可见性」会让整棵子树
+      漏掉一次重绘，图片那一次绘制就丢了。改成「可见性瞬间翻转、只有 opacity 在动」，
+      关闭时用 transition-delay 把隐藏推到淡出之后再执行。
+   ③ 图片自己不带 transform 了（原来 scale(.965) → scale(1) 的弹出）——
+      带 transform 的子元素会被提成独立合成层，正是 ① 最容易画不出来的那种层。
+      改成按 opacity 淡入，观感几乎一样。 */
 #cap-gallery .lb{
-  position:fixed;inset:0;z-index:60;background:rgba(9,8,7,.94);
+  position:fixed;inset:0;z-index:60;
+  background:rgba(9,8,7,.955);
   display:flex;align-items:center;justify-content:center;
-  opacity:0;visibility:hidden;transition:opacity .34s ease,visibility .34s;
-  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  opacity:0;visibility:hidden;
+  transition:opacity .34s ease,visibility 0s linear .34s;
   padding:clamp(16px,3vw,48px);
 }
-#cap-gallery .lb.is-open{opacity:1;visibility:visible}
+#cap-gallery .lb.is-open{
+  opacity:1;visibility:visible;
+  transition:opacity .34s ease,visibility 0s linear 0s;
+}
 #cap-gallery .lb-in{display:flex;flex-direction:column;align-items:center;
-  gap:clamp(14px,2vw,22px);max-width:100%;max-height:100%}
+  gap:clamp(14px,2vw,22px);max-width:100%;max-height:100%;min-height:0}
+/* 图片：没解码完就一直全透明。
+   ⚠️ 原来是靠 .lb.is-open 直接显示的，图还没好就先露出 img 自己的纸白背景
+   （background:#FBF8F2）—— 用户看到的就是「白框 + 空图」。现在交给 load 事件驱动。 */
 #cap-gallery .lb img{
   max-width:min(88vw,1080px);max-height:74svh;object-fit:contain;display:block;
   border:clamp(4px,0.5vw,9px) solid #FBF8F2;background:#FBF8F2;
   box-shadow:0 30px 80px rgba(0,0,0,.7);
-  transform:scale(.965);transition:transform .42s cubic-bezier(.22,1,.36,1);
+  opacity:0;transition:opacity .38s ease;
 }
-#cap-gallery .lb.is-open img{transform:scale(1)}
+#cap-gallery .lb img.is-ready{opacity:1}
+/* 载入中 / 加载失败说明。以前什么都没有，用户只能看见一个空框。 */
+#cap-gallery .lb-msg{
+  margin:0;font-family:var(--sans);font-size:12.5px;letter-spacing:.12em;
+  color:rgba(241,240,236,.62);text-align:center;
+}
+#cap-gallery .lb-msg[hidden]{display:none}
 #cap-gallery .lb-cap{text-align:center;max-width:34em;color:#F1F0EC}
 #cap-gallery .lb-cap .num{font-family:var(--mono);font-size:11px;letter-spacing:.2em;
   color:var(--accent);display:block;margin-bottom:8px}
@@ -243,5 +268,6 @@
 /* ---------- 影像页自己的降级动效 ---------- */
 @media (prefers-reduced-motion:reduce){
   #cap-gallery .slide .frame{transition:none}
+  #cap-gallery .lb img{transition:none}
 }
 
