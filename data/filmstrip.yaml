@@ -35,3 +35,30 @@
 - img: /images/film-06.jpg
   title: 一人一半
   note: 整张床都是你的
+
+# ── 2026-10-23 新增 5 张 ──
+
+- img: /images/film-07.jpg
+  title: 放风咯
+  note: 小兔耳朵白又白
+  to: /images/23-mom-yard.jpg
+
+- img: /images/film-08.jpg
+  title: 放风2.0
+  note: 下班后抱你站在楼下
+  to: /images/24-dad-sign.jpg
+
+- img: /images/film-09.jpg
+  title: 家里的囍
+  note: 墙上还贴着结婚那年的囍字，现在抱的是你，后面是小恐龙
+  to: /images/28-xi-sign.jpg
+
+- img: /images/film-10.jpg
+  title: 门前
+  note: 站在不锈钢门前，妈妈笑
+  to: /images/29-mom-gate.jpg
+
+- img: /images/film-11.jpg
+  title: 红鼻子
+  note: 举着红鼻子小人晃两下
+  to: /images/34-toy-smile.jpg
