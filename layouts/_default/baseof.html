@@ -179,6 +179,10 @@
 {{- /* 背景乐挂件：全站每页都在，翻页接着放 */ -}}
 {{ partial "capsule-bgm.html" . }}
 <script src="{{ `js/capsule-bgm.js` | relURL }}" defer></script>
+{{- /* 图片兜底：webp 那一路失败时自动退回 JPEG 副本（全站，见文件头注释）。
+       ⚠️ <picture> 的 <source> 取不到时，浏览器不会自己退回 <img src>，
+       那个位置就永远停在空框里 —— 手机断网重连、某台机器解不出 webp 都会中。 */ -}}
+<script src="{{ `js/capsule-imgfb.js` | relURL }}" defer></script>
 {{- /* 页面级脚本：各自可 boot / destroy，配合 capsule-pjax.js 换页重建。
        顺序：strip → gallery → pjax（pjax 最后，绑导航时前两个已就绪）。 */}}
 <script src="{{ `js/capsule-strip.js` | relURL }}" defer></script>
