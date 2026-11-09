@@ -19,10 +19,14 @@
 
    做法：不指望 error 事件，改成「主动扫」——
      · 文档上挂一个捕获阶段的 error 监听，哪张报错立刻救哪张；
-     · 页面就绪后按 0 / 1.2 / 4 / 9 秒各扫一遍，把
+     · 页面就绪后按 0 / 1.2 / 4 / 9 / 16 秒各扫一遍，把
        naturalWidth === 0 的（= 没画出来）挑出来救；
-     · 9 秒那次连「一直在下、但还没到」的也救，但**只救视口内的**，
-       免得为了看不见的图把已经下到一半的请求掐掉重来。
+     · 最后那次（16 秒）连「一直在下、但还没到」的也救，但**三个条件都要满足**：
+       在视口内、6 秒内没有任何下载进展（progress 事件）、才动手。
+       ⚠️ 只看「在视口内」是不够的 —— 慢网络下（比如这台机器到 Vercel 要
+       60 秒才把 36 张下完）9 秒时首屏图**几乎都还在正常下载**，一刀切下去
+       会把好端端的请求掐断、改去重下更大的 JPEG，反而更慢。
+       实测到过 `nw=760 / complete=false`（已经下到 760px 在解码）被误掐的情况。
    救 = 撤掉 <picture> 里的 <source> + 去掉 srcset + 把 src 重设一遍
         （尾上带 ?fb=1，绕开「失败过」的缓存记录）。
    每张只救一次（data-imgfb 记着），救完还不行就认了，不会来回抖。
@@ -54,14 +58,30 @@
            r.bottom > 0 && r.top < (window.innerHeight || 0);
   }
 
+  /* 还在下 / 已经卡死，两种都表现为 complete=false + naturalWidth=0。
+     区别在「有没有进展」：progress 事件只要还在来字节就会刷新时间戳。
+     STALL = 多久没有任何进展才算卡死。 */
+  var STALL = 6000;
+  var lastProgress = new WeakMap();
+  document.addEventListener('progress', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG') lastProgress.set(t, Date.now());
+  }, true);
+
+  function stalled(im) {
+    var lp = lastProgress.get(im);
+    return !lp || (Date.now() - lp) > STALL;
+  }
+
   function sweep(force) {
     var ims = document.querySelectorAll('picture img');
     for (var i = 0; i < ims.length; i++) {
       var im = ims[i];
       if (im.naturalWidth > 0 || im.getAttribute(FLAG)) continue;
       /* naturalWidth 为 0 有两种：确实失败了（complete=true）、还在路上（complete=false）。
-         前者马上救；后者只在「卡太久 + 就在眼前」时才动。 */
-      if (im.complete || (force && inView(im))) rescue(im);
+         前者马上救；后者必须「在眼前 + 6 秒毫无进展」才动，
+         不然会把正在正常下载的图掐断重来（慢网络下越救越慢）。 */
+      if (im.complete || (force && inView(im) && stalled(im))) rescue(im);
     }
   }
 
@@ -75,8 +95,10 @@
   function arm() {
     for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
     timers = [];
-    [0, 1200, 4000, 9000].forEach(function (ms, idx) {
-      timers.push(setTimeout(function () { sweep(idx === 3); }, ms));
+    /* 最后一档（16s）是唯一会动「还在下载」的图的那次，配合 stalled() 用。
+       别把它提前 —— 慢网络下 9 秒时首屏图几乎都还在正常下载。 */
+    [0, 1200, 4000, 9000, 16000].forEach(function (ms, idx, arr) {
+      timers.push(setTimeout(function () { sweep(idx === arr.length - 1); }, ms));
     });
   }
 
