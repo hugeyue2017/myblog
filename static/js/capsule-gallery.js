@@ -85,9 +85,23 @@
     return d - Math.round(d / TOTAL) * TOTAL;
   }
 
+  /* 兜底：万一 --h 用不出来（老内核不认 svh / clamp），.slide 的宽高会双双退成 0，
+     36 张照片全塌成一个 6×6 的白点，展台只剩 min-height 撑着 —— 用户看到的就是
+     「一整片黑，什么都没有」，而且没有任何报错（2026-11-09 真机上就是这样）。
+     这里量一下，真塌了就直接给个像素值，CSS 那边再坏也塌不了。 */
+  function ensureHeight() {
+    if (slides[0].offsetHeight >= 40) return;
+    var vh = window.innerHeight || 640;
+    var px = stageW <= 640
+      ? Math.min(300, Math.max(190, vh * 0.34))
+      : Math.min(450, Math.max(220, vh * 0.44));
+    stage.style.setProperty('--h', Math.round(px) + 'px');
+  }
+
   function measure() {
     stageW = stage.clientWidth || window.innerWidth;
     gap = stageW <= 640 ? 14 : 26;
+    ensureHeight();
     var acc = 0;
     for (var i = 0; i < N; i++) {
       Wd[i] = slides[i].offsetWidth || 220;
