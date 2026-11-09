@@ -76,7 +76,14 @@
 /* ---------- 展台 ---------- */
 #cap-gallery .stage{
   position:relative;
-  --h:clamp(220px,44svh,450px);          /* 单张照片的高度，宽度 = 高度 × 原图比例 */
+  /* ⚠️ 2026-11-09 修「手机上一整片黑、只有中间一个小白点」：
+     原来 --h 直接写 clamp(220px,44svh,450px)。svh 只有 Chrome 108+ 才认，
+     旧内核（没更新的 Chrome/WebView、部分国产浏览器）里它在「被用到时」才判无效 →
+     height 退成 auto、.slide 的宽高双双退成 0 → 36 张照片全塌成一个 6×6 的白点
+     （那点白就是 img 的 3px 边框），展台只剩 min-height 撑着 = 整块全黑、零报错。
+     自定义属性本身不做校验，写两遍没用（第二遍照样覆盖），只能用 @supports 分档：
+     先用 vh 兜底（没有浏览器不认），认 svh 的再用 svh 覆盖（地址栏收起时更准）。 */
+  --h:clamp(220px,44vh,450px);           /* 单张照片的高度，宽度 = 高度 × 原图比例 */
   height:calc(var(--h) + clamp(184px,24vh,258px));
   min-height:330px;
   background:var(--stage);
@@ -89,6 +96,10 @@
   user-select:none;-webkit-user-select:none;
 }
 #cap-gallery .stage.is-grabbing{cursor:grabbing}
+/* 认 svh 的浏览器才升级（iPhone/新安卓里地址栏收起后高度更贴合可视区） */
+@supports (height:1svh){
+  #cap-gallery .stage{--h:clamp(220px,44svh,450px)}
+}
 #cap-gallery .stage::before{             /* 展墙光 */
   content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
   background:radial-gradient(72% 74% at 50% 47%,rgba(255,238,214,.10),transparent 72%);
@@ -206,10 +217,14 @@
    ⚠️ 原来是靠 .lb.is-open 直接显示的，图还没好就先露出 img 自己的纸白背景
    （background:#FBF8F2）—— 用户看到的就是「白框 + 空图」。现在交给 load 事件驱动。 */
 #cap-gallery .lb img{
-  max-width:min(88vw,1080px);max-height:74svh;object-fit:contain;display:block;
+  max-width:min(88vw,1080px);max-height:74vh;object-fit:contain;display:block;
   border:clamp(4px,0.5vw,9px) solid #FBF8F2;background:#FBF8F2;
   box-shadow:0 30px 80px rgba(0,0,0,.7);
   opacity:0;transition:opacity .38s ease;
+}
+/* 同上：svh 认不出来时 max-height 会退成 none，大图直接溢出屏幕 */
+@supports (height:1svh){
+  #cap-gallery .lb img{max-height:74svh}
 }
 #cap-gallery .lb img.is-ready{opacity:1}
 /* 载入中 / 加载失败说明。以前什么都没有，用户只能看见一个空框。 */
@@ -243,7 +258,7 @@
 
 /* ---------- 手机 ---------- */
 @media (max-width:640px){
-  #cap-gallery .stage{--h:clamp(190px,34svh,300px)}   /* 小一点，两侧的邻图才露得出来 */
+  #cap-gallery .stage{--h:clamp(190px,34vh,300px)}   /* 小一点，两侧的邻图才露得出来 */
   #cap-gallery .fade{width:clamp(36px,12vw,80px)}
   #cap-gallery .masthead{padding:16px 0 10px}
   #cap-gallery .back{margin-bottom:9px;font-size:11px}
@@ -262,7 +277,14 @@
   #cap-gallery .ticks i{width:3px}
   #cap-gallery .ticks i.on{width:10px}
   #cap-gallery .lb-prev,#cap-gallery .lb-next{width:38px;height:38px}
-  #cap-gallery .lb img{max-height:64svh}
+  #cap-gallery .lb img{max-height:64vh}
+}
+/* 手机上的 svh 升级（vh 是「地址栏收起」后的高度，手机上会偏高一截） */
+@supports (height:1svh){
+  @media (max-width:640px){
+    #cap-gallery .stage{--h:clamp(190px,34svh,300px)}
+    #cap-gallery .lb img{max-height:64svh}
+  }
 }
 
 /* ---------- 影像页自己的降级动效 ---------- */
