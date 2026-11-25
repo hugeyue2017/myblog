@@ -239,22 +239,43 @@
 #cap-gallery .lb-cap .ttl{font-family:var(--serif);font-size:clamp(19px,2.4vw,28px);
   display:block;margin-bottom:8px}
 #cap-gallery .lb-cap .sub{font-size:13.5px;color:rgba(241,240,236,.66);line-height:1.7}
+/* 灯箱三个按钮：2026-11-23 换成「手绘橡皮管」——
+   米白纸片圆底 + 墨线边 + 手绘箭头，和右上角背景乐挂件同一套写法。
+   手绘感来自 SVG 路径本身的歪线 + 圆头笔帽，不挂 SVG 滤镜 ——
+   SVG 滤镜一旦引用落空，Chrome 会把整个元素「不渲染」，
+   19px 的小图标会直接消失（关闭按钮就看不见了）。
+   ⚠️ 没换 HTML 的话（按钮里还是 ← → ✕ 文字），这里照样能用：
+   文字会以墨色显示在纸片上，只是没有手绘箭头。 */
 #cap-gallery .lb-x{
   position:absolute;top:clamp(14px,2.4vw,26px);right:clamp(16px,2.6vw,30px);
-  width:42px;height:42px;border:1px solid rgba(241,240,236,.28);border-radius:50%;
-  background:none;color:#F1F0EC;font-size:19px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:.28s;
+  width:42px;height:42px;border-radius:50%;
+  border:1.8px solid #19130E;background:#F7F0DE;color:#19130E;
+  padding:0;cursor:pointer;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:2px 2.5px 0 rgba(20,15,10,.32),0 8px 20px rgba(0,0,0,.3);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;
 }
-#cap-gallery .lb-x:hover{background:rgba(241,240,236,.12);transform:rotate(90deg)}
+#cap-gallery .lb-x svg{width:19px;height:19px}
+#cap-gallery .lb-x:hover{transform:rotate(8deg) scale(1.05);
+  box-shadow:3px 3.5px 0 rgba(20,15,10,.32),0 10px 22px rgba(0,0,0,.34)}
 #cap-gallery .lb-nav{
   position:absolute;top:50%;transform:translateY(-50%);
-  width:46px;height:46px;border-radius:50%;border:1px solid rgba(241,240,236,.24);
-  background:rgba(18,16,14,.5);color:#F1F0EC;font-size:17px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:.26s;
+  width:46px;height:46px;border-radius:50%;
+  border:1.8px solid #19130E;background:#F7F0DE;color:#19130E;
+  padding:0;cursor:pointer;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:2px 2.5px 0 rgba(20,15,10,.32),0 8px 20px rgba(0,0,0,.3);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;
 }
-#cap-gallery .lb-nav:hover{background:rgba(241,240,236,.14)}
+#cap-gallery .lb-nav svg{width:26px;height:auto}
+#cap-gallery .lb-nav:hover{background:#FFFDF6;
+  box-shadow:3px 3.5px 0 rgba(20,15,10,.32),0 10px 22px rgba(0,0,0,.34)}
 #cap-gallery .lb-prev{left:clamp(10px,2vw,28px)}
 #cap-gallery .lb-next{right:clamp(10px,2vw,28px)}
+#cap-gallery .lb-prev:hover{transform:translateY(-50%) translateX(-3px) scale(1.04)}
+#cap-gallery .lb-next:hover{transform:translateY(-50%) translateX(3px) scale(1.04)}
+#cap-gallery .lb-prev:active{transform:translateY(-50%) scale(.96)}
+#cap-gallery .lb-next:active{transform:translateY(-50%) scale(.96)}
 
 /* ---------- 手机 ---------- */
 @media (max-width:640px){
@@ -276,7 +297,11 @@
   #cap-gallery .ticks{gap:3px;top:calc(50% - var(--h)/2 - 38px)}
   #cap-gallery .ticks i{width:3px}
   #cap-gallery .ticks i.on{width:10px}
-  #cap-gallery .lb-prev,#cap-gallery .lb-next{width:38px;height:38px}
+  #cap-gallery .lb-prev,#cap-gallery .lb-next{width:38px;height:38px;border-width:1.6px}
+  #cap-gallery .lb-nav svg{width:21px}
+  /* 40px 不是 36px：手指点得准比「看着小巧」重要（原来手机上也是 42px） */
+  #cap-gallery .lb-x{width:40px;height:40px;border-width:1.6px}
+  #cap-gallery .lb-x svg{width:17px;height:17px}
   #cap-gallery .lb img{max-height:64vh}
 }
 /* 手机上的 svh 升级（vh 是「地址栏收起」后的高度，手机上会偏高一截） */
