@@ -62,3 +62,21 @@
   title: 红鼻子
   note: 举着红鼻子小人晃两下
   to: /images/34-toy-smile.jpg
+
+# ── 2026-11-25 新增 4 张（都从影像页里挑，路径一样就自动对上 /gallery/#pN） ──
+
+- img: /images/47-both-grin.jpg
+  title: 嘿嘿
+  note: 妈妈笑得牙都露出来，你也跟着笑
+
+- img: /images/54-grandma-smile.jpg
+  title: 笑一个
+  note: 她笑得很大，你也没躲
+
+- img: /images/55-grandpa-laugh.jpg
+  title: 他也笑
+  note: 帽子底下看不见表情
+
+- img: /images/57-star-bib.jpg
+  title: 黄围嘴
+  note: 皱着眉，不太满意

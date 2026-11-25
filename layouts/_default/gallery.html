@@ -116,9 +116,13 @@
 </main>
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="照片大图">
-  <button class="lb-x" id="lbX" aria-label="关闭">✕</button>
-  <button class="lb-nav lb-prev" id="lbPrev" aria-label="上一张">←</button>
-  <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">→</button>
+  {{- /* 2026-11-23 换皮：三个按钮的长相改成「手绘橡皮管」——
+         墨线手绘箭头 + 米白纸片圆底（和右上角背景乐挂件同一套语言）。
+         按钮本身还是 <button> 加原来的 id，capsule-gallery.js 一点不用改；
+         aria-label 保留，读屏照旧。 */}}
+  <button class="lb-x" id="lbX" aria-label="关闭"><svg viewBox="0 0 22 22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5.9 6C8 8.2 9.7 10 11 11.1C12.2 12.1 14 14 16.1 16.1"/><path d="M16.1 6C14 8.2 12.3 10 11 11.1C9.8 12.1 8 14 5.9 16.1"/></g></svg></button>
+  <button class="lb-nav lb-prev" id="lbPrev" aria-label="上一张"><svg viewBox="0 0 34 20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M30 10.3C22.4 9.2 15.2 9.5 5.6 10"/><path d="M11.6 4.2C9.9 6.6 7.8 8.6 4.8 10.2c2.9 1.6 5 3.6 6.7 6"/></g></svg></button>
+  <button class="lb-nav lb-next" id="lbNext" aria-label="下一张"><svg viewBox="0 0 34 20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 10.3C11.6 9.2 18.8 9.5 28.4 10"/><path d="M22.4 4.2C24.1 6.6 26.2 8.6 29.2 10.2c-2.9 1.6-5 3.6-6.7 6"/></g></svg></button>
   <div class="lb-in">
     <img id="lbImg" alt="" decoding="async">
     {{- /* 载入中 / 重试中 / 最终没载出来，都写在这儿 —— 别让用户对着白框猜。 */}}
